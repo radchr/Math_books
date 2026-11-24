@@ -2,9 +2,9 @@
 name: stem-basketball-video
 description: >-
   End-to-end pipeline for creating engaging 9:16 vertical STEM-basketball educational videos
-  in Russian for a 12-year-old basketball fan. Use this skill whenever the user asks to create
-  a new math/physics/geometry/statistics basketball video, adapt a book problem into a video,
-  or build a Manim + Gemini TTS short.
+  in Russian or Ukrainian for a 12-year-old basketball fan. Use this skill whenever the user asks
+  to create a new math/physics/geometry/statistics basketball video, adapt a book problem into a
+  video, or build a Manim + Gemini/Ukrainian TTS short.
 ---
 
 # STEM-Basketball Video Production Skill
@@ -58,6 +58,9 @@ Create 55–70 second vertical (`1080×1920`, `30 fps`) popular-science videos c
      - `y = -4.6`: Bottom caption card (`make_caption`).
      - `y < -6.0`: Keep clear (Shorts/TikTok UI safe zone).
      - **Horizontal safety:** Keep all elements within `width ≤ 7.6` (`x ∈ [-3.8, +3.8]`). Constrain wide text with `if mob.width > 7.6: mob.scale_to_fit_width(7.6)`.
+   - **Data-Driven Math & Visuals (Single Source of Truth):**
+     - Derive all displayed formulas, percentages, chart heights, and verdict labels from one pure Python model function using exact `fractions.Fraction` arithmetic (see `build_buzzer_visual_spec()` in [buzzer_scene.py](../../../src/math_books/buzzer_scene.py)), rather than hardcoding visual numbers separately from math helpers.
+     - Add unit tests and `hypothesis` property-based tests in `tests/` verifying bounds, equality handling, and consistency between the model and rendered visual labels.
    - **Critical Manim & Sync Invariants:**
      - **NEVER use `self.add_sound()`** inside `Scene` — Manim's partial-movie caching drops audio on subsequent scenes. Always render silent video and mux in Step 4.
      - **NEVER put Cyrillic inside `MathTex()`** — default `latex` fails on Cyrillic. Use `Text(..., font=FONT)` for Russian labels and `MathTex()` strictly for numbers/Latin/Greek symbols.
@@ -97,9 +100,14 @@ Before generating any TTS audio or rendering Manim video, the topic must pass th
 
 1. **Generate Audio via CLI (with optional edge silence trimming):**
    ```bash
+   # Default: Gemini TTS (Russian scripts)
    uv run math-books tts <topic> --trim-edges
+
+   # Ukrainian multi-provider fallback (StyleTTS2 -> Piper -> Edge TTS)
+   uv run math-books tts <topic> --provider uk --uk-profile tyshyn --trim-edges
    ```
-   - Uses [tts_engine.py](../../../src/math_books/tts_engine.py): sends only raw Russian narration text (`PROMPT_REVISION = 2`) and rotates `gemini-3.8-flash-tts` (clips 1–3) → `gemini-2.5-flash-preview-tts` / `gemini-3.8-flash-lite-tts` (clips 4–5).
+   - **Gemini (`--provider gemini`, default):** Uses [tts_engine.py](../../../src/math_books/tts_engine.py): sends only raw narration text (`PROMPT_REVISION = 2`), rotates `gemini-3.8-flash-tts` (clips 1–3) → `gemini-2.5-flash-preview-tts` / `gemini-3.8-flash-lite-tts` (clips 4–5), and retries transient `httpx.HTTPError` / rate limits while failing fast on 400/401/403.
+   - **Ukrainian Fallback (`--provider uk`):** Uses [uk_tts_providers.py](../../../src/math_books/uk_tts_providers.py) and [voice_profiles.toml](../../../src/math_books/voice_profiles.toml) (`StyleTTS2` → local `Piper` → `Edge TTS`), pins the first working provider for the entire batch (never mixing voices mid-video), and normalizes every clip to 24 kHz mono 16-bit PCM WAV.
    - Writes immutable WAV files under `videos/video_<topic>/audio/clips/<id>-<fp>-<sha>.wav`, per-scene `.cache.json`, and `videos/video_<topic>/audio/manifest.json`.
    - **Automatic Local ASR Gate (`voiceover_qa.py`):** Every generated (or cached) clip is transcribed locally via `faster-whisper` (`base`, int8 CPU) and compared against the script (`spoken_text.py`). Any English prompt leak, repeated take, or altered number/negation/math term triggers an automatic fallback retry and blocks publication if still invalid.
 2. **Explicit Audio Verification & Listening QC:**
@@ -132,7 +140,9 @@ This validates editorial approval, audio provenance, and ASR QA receipts; render
    Confirm `width=1080`, `height=1920`, `fps=30.0`, `duration_delta < 1.0`, empty `long_silences_s`, valid `.build.json` and `editorial.ok: true`, and overall `ok: true`.
 2. **Visual Frame Inspection:**
    - Inspect all 5 extracted PNGs in `videos/video_<topic>/preview_frames/` with `read_file` to verify zero text clipping, zero overlapping labels, and balanced vertical layout.
-3. **Lint, Format, Lock & Unit Tests:**
+3. **Unified Readiness & Full CI Quality Gate (`just ci`):**
    ```bash
-   uv run ruff check src tests && uv run ruff format --check src tests && uv run python -m unittest discover -s tests -v && uv lock --check
+   uv run math-books list
+   uv run ruff format --check src tests && uv run ruff check src tests && uv run ty check && uv run python -m unittest discover -s tests -v && uv lock --check
    ```
+   Confirm the topic shows `(review:approved | audio:verified | video:verified)` in `math-books list` and all lint, formatting, `ty` type checks, and `unittest`/`hypothesis` tests pass.
