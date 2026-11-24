@@ -19,6 +19,11 @@ Create 55–70 second vertical (`1080×1920`, `30 fps`) popular-science videos c
 - **No Textbook Tone:** Never start with *"Сегодня мы изучим..."*. Open with a strong hook, myth-busting question, NBA star, or counterintuitive paradox in the first 3–5 seconds.
 - **Scientific & Pedagogical Rigor:**
   - Every video must have **one clear learning objective**, explicit model assumptions (e.g., independent shots, fixed probability), and honest limitations (distinguish mathematical expectation/probability from a guaranteed single-game outcome; do not claim certainty from a 2–10 shot sample).
+  - **Concreteness Fading (Bruner / CRA) & P-O-E:** Start with a concrete court situation or prediction question (*Predict*), show the visual mechanism (*Observe*), reveal the math formula *only after* the viewer already sees the intuition (*Explain*), and end with a 10-second transfer challenge (*Mission*).
+  - **Cognitive Load & Multimedia Design (Sweller / Mayer):**
+    - Keep at most **3–4 active visual elements** on screen at once; avoid cluttering the 9:16 frame.
+    - **Spatial Contiguity:** Place labels, percentages, and vectors directly next to the court/ball/bar they describe rather than in a distant legend.
+    - **Signaling:** Highlight only the currently discussed variable or bar in accent color (`ACCENT_ORANGE`, `ACCENT_CYAN`, `ACCENT_GOLD`, `ACCENT_MINT`).
 - **5-Scene Structure (55–70s total, ~130–170 Russian words total):**
   1. `01_hook` (~8–14s): Surprising question, myth, or pop-culture/NBA hook.
   2. `02_setup` (~12–15s): Concrete basketball scenario and explicit model assumptions with simple, exact numbers.
@@ -43,9 +48,10 @@ Create 55–70 second vertical (`1080×1920`, `30 fps`) popular-science videos c
 ## Step 1: Write Stress-Safe Russian Script & Visual Scene
 
 1. **Stress & Pronunciation Rules (`generate_<topic>_tts.py`):**
-   - Write **all numbers and percentages in words** (`одиннадцать`, `двадцати одного`, `тридцать пять процентов`, `одна целая и пять сотых`).
-   - Always use **`ё`** (`идёт`, `нырнёт`, `трёхочковый`, `счёт`, `всё`, `мёртвой`).
-   - Avoid ambiguous homographs, abbreviations (`NBA` → `Эн-Би-Эй` or `лига`), or slang that TTS might mis-stress.
+   - **Separate meaning from notation:** Screen `MathTex` carries the exact formula; TTS narration carries the human idea. Never read raw symbols mechanically (*«пе дорівнює...»*); explain what the quantity means in natural speech.
+   - Write **all numbers and percentages in words** (`одиннадцать`, `двадцати одного`, `тридцать пять процентов`, or in Ukrainian: `тридцять п'ять відсотків`, `половина` instead of robotic decimals where exact).
+   - In Russian scripts, always use **`ё`** (`идёт`, `нырнёт`, `трёхочковый`, `счёт`, `всё`, `мёртвой`).
+   - Keep sentences short enough to speak comfortably in one breath. Never pass Markdown, LaTeX, URLs, abbreviations (`NBA` → `Эн-Би-Эй` / `НБА` or `лига`), or stage directions (`[pause]`) inside the raw TTS `text` field.
 2. **Build the Vertical 9:16 Manim Scene (`<topic>_scene.py`):**
    - **Canvas & Reusable UI ([video_ui.py](../../../src/math_books/video_ui.py)):**
      - Call `configure_vertical_9_16()` and subclass `VerticalShortScene` (`1080×1920`, `frame_width=9.0`, `frame_height=16.0`, `30 fps`, `#0D1B2A`).
@@ -62,6 +68,7 @@ Create 55–70 second vertical (`1080×1920`, `30 fps`) popular-science videos c
      - Derive all displayed formulas, percentages, chart heights, and verdict labels from one pure Python model function using exact `fractions.Fraction` arithmetic (see `build_buzzer_visual_spec()` in [buzzer_scene.py](../../../src/math_books/buzzer_scene.py)), rather than hardcoding visual numbers separately from math helpers.
      - Add unit tests and `hypothesis` property-based tests in `tests/` verifying bounds, equality handling, and consistency between the model and rendered visual labels.
    - **Critical Manim & Sync Invariants:**
+     - Prefer `TransformMatchingTex` for smooth formula substitutions and `ValueTracker` + `always_redraw` for continuous ball/chart animations over abrupt static swaps.
      - **NEVER use `self.add_sound()`** inside `Scene` — Manim's partial-movie caching drops audio on subsequent scenes. Always render silent video and mux in Step 4.
      - **NEVER put Cyrillic inside `MathTex()`** — default `latex` fails on Cyrillic. Use `Text(..., font=FONT)` for Russian labels and `MathTex()` strictly for numbers/Latin/Greek symbols.
      - **Authoritative Timing, Word-Level Bookmarks & Transitions:**

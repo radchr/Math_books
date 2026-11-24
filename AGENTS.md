@@ -37,7 +37,10 @@ This workspace contains tools and pipelines for:
 - `tests/` — Unit and regression suites (`test_math_books.py`, `test_content_review.py`, `test_reliability.py`, `test_spoken_text.py`, `test_voiceover_qa.py`, `test_voiceover_pipeline.py`, `test_free_throws.py`, `test_lesson_math.py`)
 - `videos/video_<topic>/` — Clean workspace for all newly generated production `.mp4` videos and `audio/` manifests
 - `test_videos/video_<topic>/` — Archived test videos and audio from earlier iterations (`video_basketball`, `video_ahrens`, `video_simpson`, `video_moneybart`, `video_hothand`, `video_free_throws`)
-- `.agents/skills/stem-basketball-video/SKILL.md` — Detailed runbook for creating new STEM-Basketball videos
+- `.agents/skills/` — Project-specific agent skills:
+  - `stem-basketball-video/SKILL.md` — End-to-end production runbook for creating new 9:16 STEM-Basketball videos
+  - `feynman-manim-composer/SKILL.md` — Feynman/Bruner dual-column storyboard composer (Voiceover ⟷ Manim 9:16) before coding
+  - `anti-slop-review/SKILL.md` — Scientific and pedagogical anti-slop audit protocol before recording `content_reviews/<topic>.json` approval
 
 ## Critical Project Conventions
 1. **Always use `uv run`** when executing Python or `manim` commands.
