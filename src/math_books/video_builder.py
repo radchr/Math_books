@@ -197,21 +197,9 @@ def topic_status_summary(topic: VideoTopic, base: Path) -> dict:
         video_state = "stale"
     else:
         try:
-            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            provenance = json.loads(build_json.read_text(encoding="utf-8"))
-            fingerprint = render_fingerprint(topic, base, manifest)
-            audio_hashes = [
-                hashlib.sha256((base / topic.video_dir / "audio" / s["wav"]).read_bytes()).hexdigest() for s in manifest
-            ]
-            if (
-                provenance.get("fingerprint") == fingerprint
-                and provenance.get("audio_sha256") == audio_hashes
-                and provenance.get("video_sha256") == hashlib.sha256(video_path.read_bytes()).hexdigest()
-            ):
-                video_state = "verified"
-            else:
-                video_state = "stale"
-        except (OSError, ValueError, KeyError, TypeError):
+            report = verify_topic_video(topic, base, check_silence=True)
+            video_state = "verified" if report["ok"] else "stale"
+        except (OSError, ValueError, KeyError, TypeError, subprocess.CalledProcessError):
             video_state = "stale"
 
     test_mp4 = base / TEST_VIDEOS_DIR / Path(topic.video_dir).name / topic.output_name

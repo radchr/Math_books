@@ -81,6 +81,11 @@ def build_buzzer_visual_spec(
     challenge_steps: tuple[Fraction, ...] = CHALLENGE_STEP_PROBS,
 ) -> dict[str, object]:
     """Derive all scene text, formulas, and bar heights directly from model probabilities."""
+    if not 0 <= direct_prob <= 1:
+        raise ValueError(f"Direct probability out of bounds: {direct_prob}")
+    if len(chain_steps) != 3 or len(challenge_steps) != 3:
+        raise ValueError("Buzzer visual layout requires exactly 3 steps in chain_steps and challenge_steps")
+
     chain_prob = chain_success_probability(chain_steps)
     challenge_prob = chain_success_probability(challenge_steps)
     direct_pct = format_percent(direct_prob)
@@ -88,33 +93,58 @@ def build_buzzer_visual_spec(
     chain_pct = format_percent(chain_prob)
     challenge_pct = format_percent(challenge_prob)
     step_pcts = tuple(format_percent(s) for s in chain_steps)
+    min_step_pct = format_percent(min(chain_steps))
     step_decs = r" \times ".join(format_decimal(s) for s in chain_steps)
     chain_dec = format_decimal(chain_prob)
     chain_pct_num = chain_pct.removesuffix("%")
 
-    ch_step = challenge_steps[0]
-    ch_dec = format_decimal(ch_step)
     ch_prod_dec = format_decimal(challenge_prob)
     ch_pct_num = challenge_pct.removesuffix("%")
+    ch_step_pcts = tuple(format_percent(s) for s in challenge_steps)
+    if len(set(challenge_steps)) == 1:
+        ch_step = challenge_steps[0]
+        ch_dec = format_decimal(ch_step)
+        challenge_step_pct = format_percent(ch_step)
+        challenge_title = f"Цепочка из 3 шагов по {challenge_step_pct}"
+        challenge_question = f"Каждый из 3 шагов — {challenge_step_pct}.\nКаков общий шанс всей цепочки?"
+        challenge_hint = f"Умножь {ch_dec} три раза подряд:\n" + " × ".join(format_decimal(s) for s in challenge_steps)
+        challenge_latex = rf"{ch_dec}^{len(challenge_steps)} = {ch_prod_dec} = {ch_pct_num}\%"
+    else:
+        challenge_step_pct = ", ".join(ch_step_pcts)
+        challenge_title = f"Цепочка: {' • '.join(ch_step_pcts)}"
+        challenge_question = f"Шаги: {', '.join(ch_step_pcts)}.\nКаков общий шанс всей цепочки?"
+        challenge_hint = "Перемножь вероятности всех шагов:\n" + " × ".join(format_decimal(s) for s in challenge_steps)
+        ch_decs_latex = r" \times ".join(format_decimal(s) for s in challenge_steps)
+        challenge_latex = rf"{ch_decs_latex} = {ch_prod_dec} = {ch_pct_num}\%"
 
     bar_a_height = round(float(direct_prob) * BAR_FULL_SCALE_HEIGHT, 3)
     bar_b_height = round(float(chain_prob) * BAR_FULL_SCALE_HEIGHT, 3)
-    verdict_cmp = ">" if direct_prob > chain_prob else "<"
+    if direct_prob > chain_prob:
+        verdict_cmp = ">"
+        verdict_conclusion = "Прямая трёха выгоднее!"
+    elif direct_prob < chain_prob:
+        verdict_cmp = "<"
+        verdict_conclusion = "Цепочка из 3 шагов выгоднее!"
+    else:
+        verdict_cmp = "="
+        verdict_conclusion = "Шансы обоих планов равны!"
 
     return {
         "direct_pct": direct_pct,
         "direct_miss_pct": direct_miss_pct,
         "step_pcts": step_pcts,
+        "min_step_pct": min_step_pct,
         "chain_pct": chain_pct,
-        "challenge_step_pct": format_percent(ch_step),
+        "challenge_step_pct": challenge_step_pct,
+        "challenge_title": challenge_title,
+        "challenge_question": challenge_question,
         "challenge_pct": challenge_pct,
         "multiply_latex": rf"{step_decs} = {chain_dec} = {chain_pct_num}\%",
-        "challenge_hint": f"Умножь {ch_dec} три раза подряд:\n"
-        + " × ".join(format_decimal(s) for s in challenge_steps),
-        "challenge_latex": rf"{ch_dec}^{len(challenge_steps)} = {ch_prod_dec} = {ch_pct_num}\%",
+        "challenge_hint": challenge_hint,
+        "challenge_latex": challenge_latex,
         "bar_a_height": bar_a_height,
         "bar_b_height": bar_b_height,
-        "verdict_text": f"{direct_pct}  {verdict_cmp}  {chain_pct}  •  Прямая трёха выгоднее!",
+        "verdict_text": f"{direct_pct}  {verdict_cmp}  {chain_pct}  •  {verdict_conclusion}",
     }
 
 
@@ -243,9 +273,9 @@ class BuzzerBeaterBasketball(VerticalShortScene):
                     )
                 )
 
-        note = fitted_text(f"Все три числа ≥ {s2_pct}! Выглядит надёжно?", size=29, color=ACCENT_GOLD).move_to(
-            DOWN * 2.65
-        )
+        note = fitted_text(
+            f"Все три числа ≥ {self.spec['min_step_pct']}! Выглядит надёжно?", size=29, color=ACCENT_GOLD
+        ).move_to(DOWN * 2.65)
         caption = make_caption("Чтобы план сработал, должны\nвыполниться ВСЕ ТРИ шага подряд.", y=-4.6)
 
         self.play(FadeIn(badge), FadeIn(title), run_time=1.0)
@@ -288,18 +318,15 @@ class BuzzerBeaterBasketball(VerticalShortScene):
         self.finish(duration)
 
     def challenge(self, duration: float) -> None:
-        ch_step_pct = str(self.spec["challenge_step_pct"])
         badge = make_badge("ТВОЙ ХОД!", ACCENT_ORANGE)
-        title = make_subtitle(f"Цепочка из 3 шагов по {ch_step_pct}")
+        title = make_subtitle(str(self.spec["challenge_title"]))
 
         balls = (
             VGroup(make_basketball(0.45), make_basketball(0.45), make_basketball(0.45))
             .arrange(RIGHT, buff=0.85)
             .move_to(UP * 2.85)
         )
-        question = fitted_text(
-            f"Каждый из 3 шагов — {ch_step_pct}.\nКаков общий шанс всей цепочки?", size=33, color=ACCENT_GOLD
-        )
+        question = fitted_text(str(self.spec["challenge_question"]), size=33, color=ACCENT_GOLD)
         question.move_to(UP * 1.05)
         hint = fitted_text(str(self.spec["challenge_hint"]), size=30, color=ACCENT_CYAN).move_to(DOWN * 0.65)
         answer = MathTex(str(self.spec["challenge_latex"]), font_size=48, color=ACCENT_MINT).move_to(DOWN * 2.3)

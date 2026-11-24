@@ -119,13 +119,27 @@ def crop_mineru_images(
 
 
 def _table_to_md(table_el: lxml_html.HtmlElement, pno: int, inline_fn_counter: int) -> tuple[str, int]:
+    if table_el.xpath(".//table"):
+        raise ValueError(f"Nested tables are not supported on page {pno}")
     rows: list[list[str]] = []
     for tr in table_el.xpath(".//tr"):
+        if any(
+            not isinstance(child.tag, str) or child.tag not in ("th", "td")
+            for child in tr
+            if isinstance(child.tag, str)
+        ):
+            raise ValueError(f"Unsupported element inside table row on page {pno}")
         cells = tr.xpath("./th|./td")
         if not cells:
             continue
         row_cells: list[str] = []
         for cell in cells:
+            for attr in ("rowspan", "colspan"):
+                val = cell.get(attr)
+                if val is not None and val.strip() != "1":
+                    raise ValueError(f"Table cell with {attr}={val!r} is not supported on page {pno}")
+            if cell.xpath(".//img|.//svg"):
+                raise ValueError(f"Embedded media inside table cell is not supported on page {pno}")
             clone = lxml_html.fromstring(lxml_html.tostring(cell, encoding="unicode"))
             for span in clone.xpath(".//span[contains(@class, 'fnsymbol')]"):
                 inline_fn_counter += 1
@@ -135,11 +149,13 @@ def _table_to_md(table_el: lxml_html.HtmlElement, pno: int, inline_fn_counter: i
         rows.append(row_cells)
     if not rows:
         raise ValueError(f"Empty or malformed table on page {pno}")
-    col_count = max(len(r) for r in rows)
-    padded = [r + [""] * (col_count - len(r)) for r in rows]
-    header = "| " + " | ".join(padded[0]) + " |"
+    col_counts = {len(r) for r in rows}
+    if len(col_counts) != 1:
+        raise ValueError(f"Ragged table column counts {sorted(col_counts)} on page {pno}")
+    col_count = len(rows[0])
+    header = "| " + " | ".join(rows[0]) + " |"
     sep = "| " + " | ".join(["---"] * col_count) + " |"
-    body = ["| " + " | ".join(r) + " |" for r in padded[1:]]
+    body = ["| " + " | ".join(r) + " |" for r in rows[1:]]
     return "\n".join([header, sep, *body]), inline_fn_counter
 
 

@@ -90,6 +90,41 @@ class TestDigitization(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Unsupported non-empty HTML element"):
             html_page_to_md(lxml_html.fromstring(unknown_div_html), 15, [])
 
+        for merged_html in (
+            """
+            <div class="page-html" data-rel="15">
+              <div class="pagebox">
+                <table>
+                  <tr><th colspan="2">Заголовок</th></tr>
+                  <tr><td>3</td><td>4</td></tr>
+                </table>
+              </div>
+            </div>
+            """,
+            """
+            <div class="page-html" data-rel="15">
+              <div class="pagebox">
+                <table>
+                  <tr><td rowspan="2">1</td><td>2</td></tr>
+                  <tr><td>3</td></tr>
+                </table>
+              </div>
+            </div>
+            """,
+            """
+            <div class="page-html" data-rel="15">
+              <div class="pagebox">
+                <table>
+                  <tr><th>A</th><th>B</th></tr>
+                  <tr><td>3</td></tr>
+                </table>
+              </div>
+            </div>
+            """,
+        ):
+            with self.assertRaisesRegex(ValueError, "colspan|rowspan|Ragged"):
+                html_page_to_md(lxml_html.fromstring(merged_html), 15, [])
+
 
 class TestVideoBuilder(unittest.TestCase):
     def test_concat_audio_from_manifest_exact_duration(self) -> None:

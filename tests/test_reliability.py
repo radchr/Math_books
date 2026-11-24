@@ -413,6 +413,36 @@ class TestBuildSafety(unittest.TestCase):
                 report = video_builder.verify_topic_video(VIDEO_TOPICS["hothand"], root)
             self.assertFalse(report["ok"])
 
+    def test_topic_status_summary_requires_full_media_verification(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            topic, _ = self.valid_fixture(root)
+            manifest = json.loads((root / topic.video_dir / "audio/manifest.json").read_text())
+            output = root / topic.video_dir / topic.output_name
+            output.write_bytes(b"corrupt-mp4-bytes")
+            provenance = {
+                "fingerprint": video_builder.render_fingerprint(topic, root, manifest),
+                "audio_sha256": [
+                    hashlib.sha256((root / topic.video_dir / "audio" / s["wav"]).read_bytes()).hexdigest()
+                    for s in manifest
+                ],
+                "video_sha256": hashlib.sha256(output.read_bytes()).hexdigest(),
+            }
+            output.with_suffix(".build.json").write_text(json.dumps(provenance))
+
+            with patch(
+                "math_books.video_builder.verify_video",
+                return_value={"ok": False, "issues": ["Long audio silence detected: [2.5]"]},
+            ):
+                summary = video_builder.topic_status_summary(topic, root)
+            self.assertEqual(summary["video"], "stale")
+            self.assertFalse(summary["ready"])
+
+            with patch("math_books.video_builder.verify_video", return_value={"ok": True, "issues": []}):
+                summary_ok = video_builder.topic_status_summary(topic, root)
+            self.assertEqual(summary_ok["video"], "verified")
+            self.assertTrue(summary_ok["ready"])
+
     def valid_fixture(self, root):
         from math_books.voiceover_qa import model_cache, verify_clip
 

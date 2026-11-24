@@ -41,16 +41,24 @@ class TestBuzzerBeater(unittest.TestCase):
 
         # Changing the model inputs must dynamically update all visual numbers and bar heights.
         alt_spec = build_buzzer_visual_spec(
-            direct_prob=Fraction(1, 4),
-            chain_steps=(Fraction(4, 5), Fraction(1, 2), Fraction(4, 5)),
+            direct_prob=Fraction(1, 10),
+            chain_steps=(Fraction(7, 10), Fraction(1, 2), Fraction(7, 10)),
+            challenge_steps=(Fraction(1, 2), Fraction(3, 5), Fraction(1, 1)),
+        )
+        self.assertEqual(alt_spec["direct_pct"], "10%")
+        self.assertEqual(alt_spec["chain_pct"], "24.5%")
+        self.assertEqual(alt_spec["verdict_text"], "10%  <  24.5%  •  Цепочка из 3 шагов выгоднее!")
+        self.assertEqual(alt_spec["challenge_latex"], r"0.5 \times 0.6 \times 1 = 0.3 = 30\%")
+        self.assertLess(float(alt_spec["bar_a_height"]), float(alt_spec["bar_b_height"]))
+
+        # Equality case and uniform challenge exponent
+        eq_spec = build_buzzer_visual_spec(
+            direct_prob=Fraction(49, 200),
+            chain_steps=(Fraction(7, 10), Fraction(1, 2), Fraction(7, 10)),
             challenge_steps=(Fraction(1, 2), Fraction(1, 2), Fraction(1, 2)),
         )
-        self.assertEqual(alt_spec["direct_pct"], "25%")
-        self.assertEqual(alt_spec["chain_pct"], "32%")
-        self.assertEqual(alt_spec["multiply_latex"], r"0.8 \times 0.5 \times 0.8 = 0.32 = 32\%")
-        self.assertEqual(alt_spec["challenge_latex"], r"0.5^3 = 0.125 = 12.5\%")
-        self.assertLess(float(alt_spec["bar_a_height"]), float(alt_spec["bar_b_height"]))
-        self.assertIn("<", str(alt_spec["verdict_text"]))
+        self.assertEqual(eq_spec["verdict_text"], "24.5%  =  24.5%  •  Шансы обоих планов равны!")
+        self.assertEqual(eq_spec["challenge_latex"], r"0.5^3 = 0.125 = 12.5\%")
 
     def test_invalid_chain_probabilities_are_rejected(self) -> None:
         with self.assertRaises(ValueError):
