@@ -1,0 +1,251 @@
+{
+  "schema_version": 1,
+  "topic": "free_throws",
+  "script_sha256": "f0564e00296bc0cb6095109065b1d78e1bb16db3d4944db094e25a09fe1d96a8",
+  "scene_file": "src/math_books/free_throws_scene.py",
+  "scene_sha256": "e5a67b9857ac75992b53baa7173ca53fb3b6e6b4c025f9267bc7805f04d98c4a",
+  "supporting_files": {
+    "src/math_books/lesson_math.py": "62de0619be031ffecf608750e1311166a9300eb3ca1834544fb276e1d1a39209",
+    "src/math_books/video_ui.py": "161cf123412fb3802909820098ad9d64d0f8228584888262086b038d8c841772"
+  },
+  "pedagogy": {
+    "audience_age": 12,
+    "learning_objective": "Compute the probability of at least one hit in two independent fixed-probability attempts using the complement of two misses.",
+    "prerequisites": [
+      "Percentages as parts of one hundred",
+      "Decimal multiplication",
+      "Subtraction from 100 percent"
+    ],
+    "assumptions": [
+      "Two attempts are independent",
+      "The hit probability is fixed at 7/10 in the worked model, and 4/5 in the challenge",
+      "The 10×10 grid represents two independent uniform ten-cell axes with seven hit cells each, not an observed 100-attempt sample"
+    ],
+    "limitations": [
+      "70 percent is a hypothetical input, not a measured accuracy for any player",
+      "A real player may have dependence or changing accuracy, so the model needs validation",
+      "At least one includes two hits; it is not exactly one",
+      "A probability calculation does not guarantee the outcome of a particular pair of shots"
+    ],
+    "challenge": "For two independent attempts at fixed p=0.8, calculate both-miss probability first, then the complement. Pause before revealing the answer.",
+    "expected_learning": "Explain why 70+70 double-counts both-hit outcomes, and obtain 91 percent for p=0.7 and 96 percent for p=0.8 by subtracting the two-miss chance from one."
+  },
+  "sources": [
+    {
+      "id": "openstax-independent",
+      "kind": "textbook",
+      "title": "OpenStax Introductory Statistics 2e, 3.2 Independent and Mutually Exclusive Events",
+      "url": "https://openstax.org/books/introductory-statistics-2e/pages/3-2-independent-and-mutually-exclusive-events",
+      "locator": "Independent Events definition and the complement-event discussion in the two-toss example: P(A)+P(A complement)=1."
+    },
+    {
+      "id": "openstax-rules",
+      "kind": "textbook",
+      "title": "OpenStax Introductory Statistics 2e, 3.3 Two Basic Rules of Probability",
+      "url": "https://openstax.org/books/introductory-statistics-2e/pages/3-3-two-basic-rules-of-probability",
+      "locator": "The Multiplication Rule for independent events P(A AND B)=P(A)P(B); The Addition Rule P(A OR B)=P(A)+P(B)-P(A AND B)."
+    }
+  ],
+  "math_checks": [
+    {
+      "id": "at-least-one-70",
+      "kind": "independent_attempts",
+      "probability": "7/10",
+      "attempts": 2,
+      "expected_at_least_one": "91/100"
+    },
+    {
+      "id": "at-least-one-80",
+      "kind": "independent_attempts",
+      "probability": "4/5",
+      "attempts": 2,
+      "expected_at_least_one": "24/25"
+    }
+  ],
+  "scene_reviews": [
+    {
+      "scene_id": "01_hook",
+      "teaching_role": "Expose naive addition producing a value outside the probability range, then pose the correct event.",
+      "claims": [
+        {
+          "statement": "Probability is bounded by 100 percent; adding the individual hit probabilities without subtracting overlap is invalid.",
+          "script_quote": "Но вероятность больше ста процентов невозможна!",
+          "kind": "mathematical",
+          "source_ids": [
+            "openstax-independent",
+            "openstax-rules"
+          ],
+          "math_check_ids": [],
+          "reasoning": "Probability is bounded by 100 percent; adding the individual hit probabilities without subtracting overlap is invalid.",
+          "proof": "By the probability axioms 0<=P(E)<=1. For hits A and B, union probability is P(A)+P(B)-P(A and B); the both-hit event is counted twice in the naive sum."
+        }
+      ]
+    },
+    {
+      "scene_id": "02_model",
+      "teaching_role": "State independence and constant accuracy explicitly, then enumerate all four weighted outcomes.",
+      "claims": [
+        {
+          "statement": "Independence here means the second hit probability stays 0.7 after either first outcome; this is a stipulated model assumption.",
+          "script_quote": "Считаем в модели: броски независимы, а точность не меняется. После попадания и после промаха шанс снова забить одинаковый.",
+          "kind": "model",
+          "source_ids": [
+            "openstax-independent",
+            "openstax-rules"
+          ],
+          "math_check_ids": [],
+          "reasoning": "Independence here means the second hit probability stays 0.7 after either first outcome; this is a stipulated model assumption."
+        },
+        {
+          "statement": "The tree has outcomes PP=49%, PM=21%, MP=21%, MM=9%; these are exhaustive and sum to 100%.",
+          "script_quote": "На схеме — все четыре исхода.",
+          "kind": "mathematical",
+          "source_ids": [
+            "openstax-independent",
+            "openstax-rules"
+          ],
+          "math_check_ids": [],
+          "reasoning": "The tree has outcomes PP=49%, PM=21%, MP=21%, MM=9%; these are exhaustive and sum to 100%.",
+          "proof": "Under independence, P(PP)=0.7²=0.49, P(PM)=P(MP)=0.7*0.3=0.21 and P(MM)=0.3²=0.09; 0.49+0.21+0.21+0.09=1. These exact values drive the scene and are checked in tests/test_free_throws.py."
+        }
+      ]
+    },
+    {
+      "scene_id": "03_misses",
+      "teaching_role": "Make the complement event concrete: two misses are the 3×3 red block on an exact 10×10 model grid.",
+      "claims": [
+        {
+          "statement": "The miss probability is 0.3 per independent attempt; both misses have probability 0.09.",
+          "script_quote": "Умножаем тридцать сотых на тридцать сотых: девять сотых.",
+          "kind": "mathematical",
+          "source_ids": [
+            "openstax-independent",
+            "openstax-rules"
+          ],
+          "math_check_ids": [
+            "at-least-one-70"
+          ],
+          "reasoning": "The miss probability is 0.3 per independent attempt; both misses have probability 0.09.",
+          "proof": "Each miss has probability 1-0.7=0.3; independence gives 0.3*0.3=0.09. Each uniform grid axis has 3 miss cells out of10, so both-miss cells number3*3=9 out of100."
+        }
+      ]
+    },
+    {
+      "scene_id": "04_complement",
+      "teaching_role": "Subtract the two-miss probability from one and show that both hits belong to at least one.",
+      "claims": [
+        {
+          "statement": "The complement of no hits is at least one hit, giving 1-0.09=0.91.",
+          "script_quote": "Из ста процентов вычитаем девять — получаем девяносто один процент!",
+          "kind": "mathematical",
+          "source_ids": [
+            "openstax-independent",
+            "openstax-rules"
+          ],
+          "math_check_ids": [
+            "at-least-one-70"
+          ],
+          "reasoning": "The complement of no hits is at least one hit, giving 1-0.09=0.91."
+        },
+        {
+          "statement": "At least one contains the both-hit outcome; it is different from exactly one.",
+          "script_quote": "Сюда входят и два попадания.",
+          "kind": "mathematical",
+          "source_ids": [
+            "openstax-independent",
+            "openstax-rules"
+          ],
+          "math_check_ids": [],
+          "reasoning": "At least one contains the both-hit outcome; it is different from exactly one.",
+          "proof": "The event at least one is {PP,PM,MP}; summing its disjoint outcome weights gives0.49+0.21+0.21=0.91. Exactly one would exclude PP."
+        }
+      ]
+    },
+    {
+      "scene_id": "05_challenge",
+      "teaching_role": "Transfer the complement method to p=0.8, give thinking time before answer reveal and repeat the model limitation.",
+      "claims": [
+        {
+          "statement": "Two independent attempts at p=0.8 give both misses0.04 and at least one0.96.",
+          "script_quote": "Ответ — девяносто шесть процентов.",
+          "kind": "mathematical",
+          "source_ids": [
+            "openstax-independent",
+            "openstax-rules"
+          ],
+          "math_check_ids": [
+            "at-least-one-80"
+          ],
+          "reasoning": "Two independent attempts at p=0.8 give both misses0.04 and at least one0.96.",
+          "proof": "1-(1-0.8)²=1-0.04=0.96."
+        },
+        {
+          "statement": "This describes the stipulated probability model, not a guaranteed individual basketball outcome.",
+          "script_quote": "Это расчёт модели, а не гарантия.",
+          "kind": "model",
+          "source_ids": [
+            "openstax-independent",
+            "openstax-rules"
+          ],
+          "math_check_ids": [],
+          "reasoning": "This describes the stipulated probability model, not a guaranteed individual basketball outcome."
+        }
+      ]
+    }
+  ],
+  "unresolved_issues": [],
+  "reviews": {
+    "scientific": {
+      "reviewer": "Independent Codex AI reviewer /root/review_free_throws",
+      "reviewer_type": "ai",
+      "reviewed_at": "2026-11-24",
+      "verdict": "approved",
+      "dossier_sha256": "93f803dc9373a34e7f64693c4af0e78d11964697a5b2de83108edc2126a09a6d",
+      "scope": "Preproduction narration, scene code, probability data and teaching design; playback and pronunciation require separate production QA.",
+      "criteria": {
+        "evidence_matches_claims": {
+          "passed": true,
+          "rationale": "OpenStax definitions and product/union rules support the conditional model; the worked numbers follow from explicit inputs without requiring player data."
+        },
+        "calculations_correct": {
+          "passed": true,
+          "rationale": "Independent exact-fraction calculation gives49/100,21/100,21/100,9/100; the3x3 miss block leaves91/100. For p=4/5 the result is1-(1/5)^2=24/25."
+        },
+        "assumptions_and_limits": {
+          "passed": true,
+          "rationale": "Scene2 specifies constant accuracy and equal second-shot probability after either first result; scene3 labels an equiprobable model grid and scene5 reiterates independence."
+        },
+        "no_overclaim": {
+          "passed": true,
+          "rationale": "Accuracy is hypothetical, real-player independence needs checking and the ending distinguishes probability from a guarantee."
+        }
+      }
+    },
+    "pedagogical": {
+      "reviewer": "Independent Codex AI reviewer /root/review_free_throws",
+      "reviewer_type": "ai",
+      "reviewed_at": "2026-11-24",
+      "verdict": "approved",
+      "dossier_sha256": "93f803dc9373a34e7f64693c4af0e78d11964697a5b2de83108edc2126a09a6d",
+      "scope": "Preproduction narration, scene code, probability data and teaching design; playback and pronunciation require separate production QA.",
+      "criteria": {
+        "age_and_prerequisites": {
+          "passed": true,
+          "rationale": "The free-throw setting, explicit P/M key and hundred-cell grid support a12-year-old with percentages, decimal multiplication and subtraction."
+        },
+        "objective_alignment": {
+          "passed": true,
+          "rationale": "All steps serve the same question: enumerate pairs, count both misses, then take the complement."
+        },
+        "explanation_clarity": {
+          "passed": true,
+          "rationale": "Ordered weighted leaves show all four cases; the3x3 red block connects multiplication to counting. The successful list includes PP, explaining why simple addition fails."
+        },
+        "challenge_checks_understanding": {
+          "passed": true,
+          "rationale": "Changing accuracy to80 percent requires transfer of the method; a question and hint precede the96 percent answer reveal."
+        }
+      }
+    }
+  }
+}

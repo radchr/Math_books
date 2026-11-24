@@ -1,0 +1,17 @@
+{
+  "fingerprint": "74d0970e5788ab94ad5c6a0a1419c2dbaaf15b7dd4b96a79f3aa94bc493ff293",
+  "model": "gemini-3.8-flash-tts",
+  "voice": "Puck",
+  "wav_sha256": "27e1e67d18a5d00ddf6b0ed569c91be5910a477e93d152699a54a9b603491baf",
+  "wav": "clips/03_misses-74d0970e5788-27e1e67d18a5.wav",
+  "audio_qa_edit": {
+    "source_wav_sha256": "39b6f2f2a87fce9822a4221f8359d4d3a0038687a01db50f700032946aaf8cc4",
+    "keep_ranges_s": [
+      [
+        11.82,
+        null
+      ]
+    ],
+    "reason": "Local ASR verified a partial false start plus English TTS instructions before a full Russian take; retain the full Russian take."
+  }
+}

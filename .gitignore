@@ -1,0 +1,28 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.pytest_cache/
+.ruff_cache/
+.cache/
+
+# Virtual environments
+.venv/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Rendered media & Manim caches
+video_*/media/
+videos/video_*/media/
+test_videos/video_*/media/
+*.mp4
+*.wav
+video_*/audio/.pipeline.lock
+videos/video_*/audio/.pipeline.lock
+test_videos/video_*/audio/.pipeline.lock

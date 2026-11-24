@@ -1,0 +1,357 @@
+{
+  "wav_sha256": "43cccc85f357a1535e18a80e32d1d634ceecd5d0988cfb71aa8d40ca26ebf901",
+  "text_sha256": "fc1df7500642b730ddf6e5c5bc87d1e6811e72f202ecc3919e6c47d883d4ad94",
+  "policy_sha256": "62932b14a5fd0bbeca1030a6e669c641ce3e49e25a876c75ee56ab0b6de034d9",
+  "profile": {
+    "revision": 1,
+    "engine": "faster-whisper",
+    "model": "base",
+    "language": "ru",
+    "beam_size": 5,
+    "compute_type": "int8",
+    "sample_rate": 16000,
+    "packages": {
+      "faster-whisper": "1.2.1",
+      "pymorphy3": "2.0.6",
+      "num2words": "0.5.14",
+      "snowballstemmer": "3.1.1"
+    },
+    "verifier_sha256": "e5f63a4a1b2c3929b07777382a0a5fc7589573e978772d89660f19c2bbc30852",
+    "normalizer_sha256": "0771dddf477f7ab9a7b59e350a61c3443628804e18d213b2af2015ab0fff2c04"
+  },
+  "expected_text": "Для успеха второго плана нужны все три шага подряд. Умножаем вероятности независимых событий: семь десятых на одну вторую и ещё на семь десятых — выходит двадцать четыре и пять десятых процента! Даже один дальний бросок даёт тридцать — это больше!",
+  "transcript": "Для успеха второго плана нужны все три шака подряд. Умножаем вероятности независимых событий. 70-х на одну вторую, еще на 70-х. Выходит 24,5%. Даже один дальний бросок дает 30, это больше.",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 2.96,
+      "text": " Для успеха второго плана нужны все три шака подряд.",
+      "words": [
+        {
+          "start": 0.0,
+          "end": 0.28,
+          "word": " Для"
+        },
+        {
+          "start": 0.28,
+          "end": 0.76,
+          "word": " успеха"
+        },
+        {
+          "start": 0.76,
+          "end": 1.18,
+          "word": " второго"
+        },
+        {
+          "start": 1.18,
+          "end": 1.5,
+          "word": " плана"
+        },
+        {
+          "start": 1.5,
+          "end": 1.8,
+          "word": " нужны"
+        },
+        {
+          "start": 1.8,
+          "end": 2.0,
+          "word": " все"
+        },
+        {
+          "start": 2.0,
+          "end": 2.26,
+          "word": " три"
+        },
+        {
+          "start": 2.26,
+          "end": 2.6,
+          "word": " шака"
+        },
+        {
+          "start": 2.6,
+          "end": 2.96,
+          "word": " подряд."
+        }
+      ]
+    },
+    {
+      "start": 3.38,
+      "end": 5.52,
+      "text": " Умножаем вероятности независимых событий.",
+      "words": [
+        {
+          "start": 3.38,
+          "end": 3.78,
+          "word": " Умножаем"
+        },
+        {
+          "start": 3.78,
+          "end": 4.38,
+          "word": " вероятности"
+        },
+        {
+          "start": 4.38,
+          "end": 5.02,
+          "word": " независимых"
+        },
+        {
+          "start": 5.02,
+          "end": 5.52,
+          "word": " событий."
+        }
+      ]
+    },
+    {
+      "start": 5.74,
+      "end": 8.48,
+      "text": " 70-х на одну вторую, еще на 70-х.",
+      "words": [
+        {
+          "start": 5.74,
+          "end": 6.02,
+          "word": " 70"
+        },
+        {
+          "start": 6.02,
+          "end": 6.58,
+          "word": "-х"
+        },
+        {
+          "start": 6.58,
+          "end": 6.74,
+          "word": " на"
+        },
+        {
+          "start": 6.74,
+          "end": 6.92,
+          "word": " одну"
+        },
+        {
+          "start": 6.92,
+          "end": 7.32,
+          "word": " вторую,"
+        },
+        {
+          "start": 7.42,
+          "end": 7.6,
+          "word": " еще"
+        },
+        {
+          "start": 7.6,
+          "end": 7.72,
+          "word": " на"
+        },
+        {
+          "start": 7.72,
+          "end": 8.04,
+          "word": " 70"
+        },
+        {
+          "start": 8.04,
+          "end": 8.48,
+          "word": "-х."
+        }
+      ]
+    },
+    {
+      "start": 8.76,
+      "end": 11.3,
+      "text": " Выходит 24,5%.",
+      "words": [
+        {
+          "start": 8.76,
+          "end": 9.0,
+          "word": " Выходит"
+        },
+        {
+          "start": 9.0,
+          "end": 9.78,
+          "word": " 24"
+        },
+        {
+          "start": 9.78,
+          "end": 11.3,
+          "word": ",5%."
+        }
+      ]
+    },
+    {
+      "start": 11.3,
+      "end": 15.18,
+      "text": " Даже один дальний бросок дает 30, это больше.",
+      "words": [
+        {
+          "start": 11.3,
+          "end": 12.06,
+          "word": " Даже"
+        },
+        {
+          "start": 12.06,
+          "end": 12.56,
+          "word": " один"
+        },
+        {
+          "start": 12.56,
+          "end": 13.04,
+          "word": " дальний"
+        },
+        {
+          "start": 13.04,
+          "end": 13.5,
+          "word": " бросок"
+        },
+        {
+          "start": 13.5,
+          "end": 13.8,
+          "word": " дает"
+        },
+        {
+          "start": 13.8,
+          "end": 14.5,
+          "word": " 30,"
+        },
+        {
+          "start": 14.64,
+          "end": 14.78,
+          "word": " это"
+        },
+        {
+          "start": 14.78,
+          "end": 15.18,
+          "word": " больше."
+        }
+      ]
+    }
+  ],
+  "comparison": {
+    "ok": false,
+    "issues": [
+      "Numbers, units, negation or scientific qualifiers do not match",
+      "Extra/missing speech: 1 inserted and 2 deleted tokens",
+      "Transcript mismatch exceeds conservative ASR tolerance (26.5%)"
+    ],
+    "warnings": [],
+    "foreign_words": [],
+    "insertions": 1,
+    "deletions": 2,
+    "substitutions": 6,
+    "word_error_rate": 0.2647,
+    "edits": [
+      {
+        "kind": "substitution",
+        "expected": "шаг",
+        "actual": "шак"
+      },
+      {
+        "kind": "insertion",
+        "actual": "#number:70"
+      },
+      {
+        "kind": "substitution",
+        "expected": "#number:7/10",
+        "actual": "х"
+      },
+      {
+        "kind": "deletion",
+        "expected": "и"
+      },
+      {
+        "kind": "deletion",
+        "expected": "#number:7/10"
+      },
+      {
+        "kind": "substitution",
+        "expected": "выход",
+        "actual": "#number:70"
+      },
+      {
+        "kind": "substitution",
+        "expected": "#number:24",
+        "actual": "х"
+      },
+      {
+        "kind": "substitution",
+        "expected": "и",
+        "actual": "выход"
+      },
+      {
+        "kind": "substitution",
+        "expected": "#number:1/2",
+        "actual": "#number:49/2"
+      }
+    ],
+    "expected_tokens": [
+      "для",
+      "успех",
+      "#number:2",
+      "план",
+      "нужн",
+      "все",
+      "#number:3",
+      "шаг",
+      "подряд",
+      "умножа",
+      "вероятн",
+      "независим",
+      "событ",
+      "#number:7/10",
+      "на",
+      "#number:1",
+      "#number:2",
+      "и",
+      "ещ",
+      "на",
+      "#number:7/10",
+      "выход",
+      "#number:24",
+      "и",
+      "#number:1/2",
+      "процент",
+      "даж",
+      "#number:1",
+      "дальн",
+      "бросок",
+      "дава",
+      "#number:30",
+      "эт",
+      "больш"
+    ],
+    "actual_tokens": [
+      "для",
+      "успех",
+      "#number:2",
+      "план",
+      "нужн",
+      "все",
+      "#number:3",
+      "шак",
+      "подряд",
+      "умножа",
+      "вероятн",
+      "независим",
+      "событ",
+      "#number:70",
+      "х",
+      "на",
+      "#number:1",
+      "#number:2",
+      "ещ",
+      "на",
+      "#number:70",
+      "х",
+      "выход",
+      "#number:49/2",
+      "процент",
+      "даж",
+      "#number:1",
+      "дальн",
+      "бросок",
+      "дава",
+      "#number:30",
+      "эт",
+      "больш"
+    ]
+  },
+  "ok": false,
+  "checked_at": "2026-11-24T14:32:18.697188+00:00"
+}

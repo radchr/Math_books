@@ -1,0 +1,86 @@
+[
+  {
+    "id": "01_hook",
+    "text": "Представь: у тебя два штрафных, и шанс забить каждый — семьдесят процентов. Каков шанс попасть хотя бы раз? Семьдесят плюс семьдесят — сто сорок? Но вероятность больше ста процентов невозможна!",
+    "fingerprint": "592c2fbd404862fddbdc999792ca2865ad14aafc045ec318e7c98e7a3e3e5f3f",
+    "model": "gemini-3.8-flash-tts",
+    "voice": "Puck",
+    "wav_sha256": "deec775188c833d437d5a8747258942be6165ed64994e5a7b2a421cd7d26515d",
+    "wav": "clips/01_hook-592c2fbd4048-deec775188c8.wav",
+    "duration": 12.725833333333334,
+    "audio_qa_edit": {
+      "source_wav_sha256": "80f697877de0bae7c5c07c0e891c8cee6256c0c785329dd4a63bbdcd4561acc5",
+      "keep_ranges_s": [
+        [
+          12.48,
+          null
+        ]
+      ],
+      "reason": "Local ASR verified English TTS instructions before a full Russian take; retain only that complete Russian take."
+    }
+  },
+  {
+    "id": "02_model",
+    "text": "Считаем в модели: броски независимы, а точность не меняется. После попадания и после промаха шанс снова забить одинаковый. У настоящего игрока это допущение нужно проверять. На схеме — все четыре исхода.",
+    "fingerprint": "d75d4c033aaddca01f37d366a969ab2ed7610ddd38e15a0e26acb163cbbbf4ee",
+    "model": "gemini-3.8-flash-tts",
+    "voice": "Puck",
+    "wav_sha256": "3f92a134de8874b586603e0d7bdf69ac1e0da9f473708c4e084ba00618790aec",
+    "wav": "clips/02_model-d75d4c033aad-3f92a134de88.wav",
+    "duration": 13.6195
+  },
+  {
+    "id": "03_misses",
+    "text": "Проще найти обратное событие: оба раза промахнуться. Шанс одного промаха — тридцать процентов. Умножаем тридцать сотых на тридцать сотых: девять сотых. На модельной сетке это девять красных клеток из ста.",
+    "fingerprint": "74d0970e5788ab94ad5c6a0a1419c2dbaaf15b7dd4b96a79f3aa94bc493ff293",
+    "model": "gemini-3.8-flash-tts",
+    "voice": "Puck",
+    "wav_sha256": "27e1e67d18a5d00ddf6b0ed569c91be5910a477e93d152699a54a9b603491baf",
+    "wav": "clips/03_misses-74d0970e5788-27e1e67d18a5.wav",
+    "duration": 12.587083333333334,
+    "audio_qa_edit": {
+      "source_wav_sha256": "39b6f2f2a87fce9822a4221f8359d4d3a0038687a01db50f700032946aaf8cc4",
+      "keep_ranges_s": [
+        [
+          11.82,
+          null
+        ]
+      ],
+      "reason": "Local ASR verified a partial false start plus English TTS instructions before a full Russian take; retain the full Russian take."
+    }
+  },
+  {
+    "id": "04_complement",
+    "text": "Все остальные клетки означают хотя бы одно попадание. Из ста процентов вычитаем девять — получаем девяносто один процент! Сюда входят и два попадания. Поэтому складывать семьдесят и семьдесят без поправки нельзя.",
+    "fingerprint": "df4504958f853c3f5c5406442d9c3d1e2cec00e58daa6422881b2899e2b72f42",
+    "model": "gemini-2.5-flash-preview-tts",
+    "voice": "Puck",
+    "wav_sha256": "5e09723f990e1b568429484a9718b2b6a0779cd3e46477df03362bf408475a94",
+    "wav": "clips/04_complement-df4504958f85-5e09723f990e.wav",
+    "duration": 13.142416666666668
+  },
+  {
+    "id": "05_challenge",
+    "text": "Теперь твой ход: при точности восемьдесят процентов найди шанс хотя бы одного попадания за два независимых броска. Сначала посчитай два промаха. Пауза! Ответ — девяносто шесть процентов. Это расчёт модели, а не гарантия.",
+    "fingerprint": "c9aeee593c8e3dd7e55d2009fa7d1dc931e3441d737726c93d0b7d2cbe22faf6",
+    "model": "gemini-2.5-flash-preview-tts",
+    "voice": "Puck",
+    "wav_sha256": "733f745c66b93d51ab75015510b04b832fade569ff6ddfe529f79745e50bfba8",
+    "wav": "clips/05_challenge-c9aeee593c8e-733f745c66b9.wav",
+    "duration": 15.645958333333333,
+    "audio_qa_edit": {
+      "source_wav_sha256": "761bf37f4208ec9177aef0d757d11c804862cf53363036d0e47ec9a4a0417210",
+      "keep_ranges_s": [
+        [
+          0,
+          9.15
+        ],
+        [
+          9.6,
+          null
+        ]
+      ],
+      "reason": "Shorten 450 ms entirely inside the detected 9.023–10.413 s silent interval; retain spoken words and the thinking pause before the answer."
+    }
+  }
+]

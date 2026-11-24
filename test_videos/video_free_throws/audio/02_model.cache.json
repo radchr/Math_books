@@ -1,0 +1,7 @@
+{
+  "fingerprint": "d75d4c033aaddca01f37d366a969ab2ed7610ddd38e15a0e26acb163cbbbf4ee",
+  "model": "gemini-3.8-flash-tts",
+  "voice": "Puck",
+  "wav_sha256": "3f92a134de8874b586603e0d7bdf69ac1e0da9f473708c4e084ba00618790aec",
+  "wav": "clips/02_model-d75d4c033aad-3f92a134de88.wav"
+}

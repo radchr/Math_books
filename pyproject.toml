@@ -1,0 +1,43 @@
+[project]
+name = "math-books"
+version = "0.1.0"
+description = "STEM-Basketball 9:16 vertical video pipeline (Manim + Gemini TTS) and math book digitization tools"
+readme = "README.md"
+authors = [
+    { email = "pochta.roman.r.git@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "gradio-client>=2.7.2",
+    "faster-whisper>=1.2.1",
+    "httpx>=0.28.1",
+    "img2pdf>=0.6.3",
+    "lxml>=6.0.0",
+    "manim>=0.22.1",
+    "numpy>=2.0.0",
+    "num2words>=0.5.14",
+    "pillow>=11.0.0",
+    "pydub>=0.25.1",
+    "pymorphy3>=2.0.3",
+    "python-dotenv>=1.2.4",
+    "snowballstemmer>=3.0.1",
+]
+
+[project.scripts]
+math-books = "math_books.cli:main"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.11.0",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[build-system]
+requires = ["uv_build>=0.13.9,<0.14.0"]
+build-backend = "uv_build"

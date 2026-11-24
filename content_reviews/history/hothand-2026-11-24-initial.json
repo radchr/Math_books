@@ -1,0 +1,208 @@
+{
+  "schema_version": 1,
+  "topic": "hothand",
+  "script_sha256": "01a8022774a337f4d3b8cd9785391946fbfefe86bec400f861196d9faee24b04",
+  "scene_file": "src/math_books/hothand_scene.py",
+  "scene_sha256": "495d39b71bc3cc7ae3998c6bbfbbfb7f11e50e403ae2656f0ca8a29b2a7adab1",
+  "pedagogy": {
+    "audience_age": 12,
+    "learning_objective": "Distinguish the equal-weight mean of six per-sequence proportions from the proportion pooled over eight eligible transitions.",
+    "prerequisites": [
+      "Fractions, percentages and arithmetic mean",
+      "Independent fair coin flips"
+    ],
+    "assumptions": [
+      "Independent fair coin flips with fixed probability 1/2",
+      "Exactly three flips in each equally likely sequence",
+      "Exclude sequences with no observed flip after heads when averaging defined per-sequence rates",
+      "Assign equal weight to each retained sequence, not to each eligible transition"
+    ],
+    "limitations": [
+      "The 5/12 result concerns this finite-sequence estimator, not the next-flip probability",
+      "The three-flip example supplies no universal basketball shooting bonus",
+      "This is a conceptual introduction; basketball inference needs data and an appropriate null model"
+    ],
+    "challenge": "Enumerate all eight three-flip sequences; mark the two with no eligible transition, compare the mean of the six defined rates with the pooled proportion.",
+    "expected_learning": "The learner explains why 5/12 and 1/2 answer different averaging questions and why the next independent fair-coin flip remains 50 percent."
+  },
+  "sources": [
+    {
+      "id": "miller-sanjurjo-2018",
+      "kind": "primary",
+      "title": "Miller & Sanjurjo (2018), Surprised by the Hot Hand Fallacy? A Truth in the Law of Small Numbers, Econometrica 86(6), 2019–2047",
+      "url": "https://marketing.wharton.upenn.edu/wp-content/uploads/2018/11/Paper-Joshua-Miller.pdf",
+      "locator": "Abstract and Section 1, Table 1 (three-flip sequences); discussion of equal sequence weights versus recorded flips."
+    }
+  ],
+  "math_checks": [
+    {
+      "id": "coin-three-flips",
+      "kind": "fair_coin_followups",
+      "expected_sequence_mean": "5/12",
+      "expected_pooled": "1/2"
+    },
+    {
+      "id": "fair-next-flip",
+      "kind": "expected_points",
+      "probability": "1/2",
+      "points": 1,
+      "expected": "1/2"
+    }
+  ],
+  "scene_reviews": [
+    {
+      "scene_id": "01_hook",
+      "teaching_role": "Introduce the basketball motivation and the possibility of biased estimation.",
+      "claims": [
+        {
+          "statement": "The historical hot-hand debate and estimation bias are documented in Miller and Sanjurjo; no particular player improvement is claimed.",
+          "script_quote": "Забил два раза подряд — значит, поймал горячую руку? Учёные спорили об этом десятилетиями. Оказалось, даже способ подсчёта может спрятать эффект! Разберём ловушку на обычной монетке.",
+          "kind": "empirical",
+          "source_ids": [
+            "miller-sanjurjo-2018"
+          ],
+          "math_check_ids": [],
+          "reasoning": "The historical hot-hand debate and estimation bias are documented in Miller and Sanjurjo; no particular player improvement is claimed."
+        }
+      ]
+    },
+    {
+      "scene_id": "02_coin_trap",
+      "teaching_role": "Separate the probability of a future independent flip from a statistic computed from finite sequences.",
+      "claims": [
+        {
+          "statement": "An independent fair coin has next-head probability 1/2 regardless of previous flips.",
+          "script_quote": "У честной монетки шанс следующего орла всегда пятьдесят процентов. Теперь другая задача: подбрасываем три раза и в каждой серии считаем долю орлов среди бросков сразу после орла.",
+          "kind": "mathematical",
+          "source_ids": [],
+          "math_check_ids": [
+            "fair-next-flip"
+          ],
+          "reasoning": "An independent fair coin has next-head probability 1/2 regardless of previous flips."
+        }
+      ]
+    },
+    {
+      "scene_id": "03_paradox",
+      "teaching_role": "Display the six defined rates and give the exact mean, with excluded sequences explained in narration.",
+      "claims": [
+        {
+          "statement": "Two of eight sequences have no observable flip following heads; averaging the six remaining rates equally gives 5/12, not a changed next-flip probability.",
+          "script_quote": "Подходящих серий шесть. В двух остальных после орла нет броска: их пропускаем. Усредняем шесть долей с одинаковым весом — получаем примерно сорок два процента! Это среднее оценок, а не шанс следующего орла.",
+          "kind": "mathematical",
+          "source_ids": [
+            "miller-sanjurjo-2018"
+          ],
+          "math_check_ids": [
+            "coin-three-flips"
+          ],
+          "reasoning": "Two of eight sequences have no observable flip following heads; averaging the six remaining rates equally gives 5/12, not a changed next-flip probability."
+        }
+      ]
+    },
+    {
+      "scene_id": "04_nba_revenge",
+      "teaching_role": "Contrast the pooled 4/8 rate with the equal-sequence mean and state the boundary of the basketball analogy.",
+      "claims": [
+        {
+          "statement": "The same eligible transitions contain four heads out of eight; changing weights changes the estimand.",
+          "script_quote": "Если объединить все подходящие переходы, получим четыре орла из восьми — пятьдесят процентов. Разные веса дают разные средние! В баскетболе такое смещение тоже нужно учитывать. Универсального бонуса после попаданий здесь нет.",
+          "kind": "mathematical",
+          "source_ids": [],
+          "math_check_ids": [
+            "coin-three-flips"
+          ],
+          "reasoning": "The same eligible transitions contain four heads out of eight; changing weights changes the estimand."
+        },
+        {
+          "statement": "Streak-selection bias is relevant to basketball analyses, but its size depends on the design, so the coin example supplies no universal bonus.",
+          "script_quote": "Если объединить все подходящие переходы, получим четыре орла из восьми — пятьдесят процентов. Разные веса дают разные средние! В баскетболе такое смещение тоже нужно учитывать. Универсального бонуса после попаданий здесь нет.",
+          "kind": "empirical",
+          "source_ids": [
+            "miller-sanjurjo-2018"
+          ],
+          "math_check_ids": [],
+          "reasoning": "Streak-selection bias is relevant to basketball analyses, but its size depends on the design, so the coin example supplies no universal bonus."
+        }
+      ]
+    },
+    {
+      "scene_id": "05_challenge",
+      "teaching_role": "Ask the learner to enumerate outcomes and explain which weights each mean uses.",
+      "claims": [
+        {
+          "statement": "Three binary flips have eight possible sequences.",
+          "script_quote": "Твой челлендж: выпиши все восемь серий по три броска. Сравни среднее долей и долю по всем переходам вместе. А по двум попаданиям подряд не спеши объявлять себя непобедимым!",
+          "kind": "mathematical",
+          "source_ids": [],
+          "math_check_ids": [
+            "coin-three-flips"
+          ],
+          "reasoning": "Three binary flips have eight possible sequences.",
+          "proof": "Each of three positions has two outcomes, yielding 2×2×2=8; two have no eligible transition."
+        },
+        {
+          "statement": "Two consecutive makes by themselves do not establish a hot-hand effect; the task concerns comparing two estimators.",
+          "script_quote": "Твой челлендж: выпиши все восемь серий по три броска. Сравни среднее долей и долю по всем переходам вместе. А по двум попаданиям подряд не спеши объявлять себя непобедимым!",
+          "kind": "model",
+          "source_ids": [],
+          "math_check_ids": [],
+          "reasoning": "Two consecutive makes by themselves do not establish a hot-hand effect; the task concerns comparing two estimators."
+        }
+      ]
+    }
+  ],
+  "unresolved_issues": [],
+  "reviews": {
+    "scientific": {
+      "reviewer": "Independent Codex AI reviewer /root/review_content_gate",
+      "reviewer_type": "ai",
+      "reviewed_at": "2026-11-24",
+      "verdict": "changes_required",
+      "dossier_sha256": "858db63b36d833a87e77febf5390f0e0401bc3ccf9573257460d080be6536dd5",
+      "criteria": {
+        "evidence_matches_claims": {
+          "passed": false,
+          "rationale": "The paper supports the debate and three-flip example, but the fair-next-flip multiplication assumes the probability instead of demonstrating independence; use a proof and precise claim quotes."
+        },
+        "calculations_correct": {
+          "passed": true,
+          "rationale": "The six defined rates are 2/2, 1/2, 0/1, 0/1, 1/1, 0/1; their mean is 5/12 and pooling gives 4/8."
+        },
+        "assumptions_and_limits": {
+          "passed": false,
+          "rationale": "The dossier states independence, but narration says fairness alone; the challenge asks for rates even where no post-head flip exists."
+        },
+        "no_overclaim": {
+          "passed": false,
+          "rationale": "The universal-bonus caption makes a basketball assertion that the coin model cannot establish."
+        }
+      }
+    },
+    "pedagogical": {
+      "reviewer": "Independent Codex AI reviewer /root/review_content_gate",
+      "reviewer_type": "ai",
+      "reviewed_at": "2026-11-24",
+      "verdict": "changes_required",
+      "dossier_sha256": "858db63b36d833a87e77febf5390f0e0401bc3ccf9573257460d080be6536dd5",
+      "criteria": {
+        "age_and_prerequisites": {
+          "passed": true,
+          "rationale": "Three coin flips and basketball are appropriate for a 12-year-old with fractions, percentages and arithmetic means."
+        },
+        "objective_alignment": {
+          "passed": true,
+          "rationale": "The six-row formula and pooled count address the distinction between the two averaging procedures."
+        },
+        "explanation_clarity": {
+          "passed": false,
+          "rationale": "Show a worked OOR sequence contributing one head in two eligible flips and both flips to the pool."
+        },
+        "challenge_checks_understanding": {
+          "passed": false,
+          "rationale": "Find the share in each asks for undefined rates in RRO and RRR; mark those rows undefined and exclude them."
+        }
+      }
+    }
+  }
+}

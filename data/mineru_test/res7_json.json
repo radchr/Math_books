@@ -1,0 +1,347 @@
+{
+  "page_numbers": [13, 14, 15, 16],
+  "pages": [
+    {
+      "page_idx": 0,
+      "blocks": [
+        {
+          "type": "text",
+          "bbox": [
+            0.044,
+            0.023,
+            0.952,
+            0.097
+          ],
+          "content": ",     - 11,   2,   9 , -,  ."
+        },
+        {
+          "type": "text",
+          "bbox": [
+            0.043,
+            0.097,
+            0.953,
+            0.217
+          ],
+          "content": "1-:    2 ;.   -,     ,   ,;     , -?"
+        },
+        {
+          "type": "text",
+          "bbox": [
+            0.043,
+            0.218,
+            0.951,
+            0.315
+          ],
+          "content": "2-:  ,  -,,    ,?"
+        },
+        {
+          "type": "text",
+          "bbox": [
+            0.043,
+            0.315,
+            0.95,
+            0.388
+          ],
+          "content": "3-:  ,,,     5 ?"
+        },
+        {
+          "type": "text",
+          "bbox": [
+            0.042,
+            0.389,
+            0.95,
+            0.461
+          ],
+          "content": "-:  ,  -, 3      1 ?"
+        },
+        {
+          "type": "text",
+          "bbox": [
+            0.042,
+            0.461,
+            0.952,
+            0.608
+          ],
+          "content": ":   -,   2; 100 .   ,  - ()).?"
+        },
+        {
+          "type": "paragraph_title",
+          "bbox": [
+            0.402,
+            0.646,
+            0.59,
+            0.673
+          ],
+          "level": 2,
+          "content": "ΓbAII."
+        },
+        {
+          "type": "paragraph_title",
+          "bbox": [
+            0.205,
+            0.695,
+            0.788,
+            0.727
+          ],
+          "level": 3,
+          "content": "."
+        },
+        {
+          "type": "paragraph_title",
+          "bbox": [
+            0.223,
+            0.749,
+            0.77,
+            0.776
+          ],
+          "level": 3,
+          "content": ".    ."
+        },
+        {
+          "type": "page_footnote",
+          "bbox": [
+            0.044,
+            0.859,
+            0.953,
+            0.921
+          ],
+          "content": "-,  , , , -,     ."
+        },
+        {
+          "type": "page_number",
+          "bbox": [
+            0.908,
+            0.941,
+            0.951,
+            0.965
+          ],
+          "content": ""
+        }
+      ]
+    },
+    {
+      "page_idx": 1,
+      "blocks": [
+        {
+          "type": "text",
+          "bbox": [
+            0.043,
+            0.023,
+            0.958,
+            0.121
+          ],
+          "content": "“.  .,."
+        },
+        {
+          "type": "image",
+          "bbox": [
+            0.167,
+            0.154,
+            0.829,
+            0.578
+          ],
+          "content": "",
+          "captions": [
+            {
+              "bbox": [
+                0.45,
+                0.608,
+                0.552,
+                0.631
+              ],
+              "content": "Pc. 2."
+            }
+          ],
+          "footnotes": [],
+          "image_source": "images/page_1_image_1.jpg"
+        },
+        {
+          "type": "text",
+          "bbox": [
+            0.042,
+            0.65,
+            0.956,
+            0.869
+          ],
+          "content": "188 .,,.    ,  - -,  : h zl“(  15),   “( )   ,  : du tquin\" ()."
+        },
+        {
+          "type": "text",
+          "bbox": [
+            0.043,
+            0.869,
+            0.956,
+            0.919
+          ],
+          "content": "-;"
+        },
+        {
+          "type": "page_number",
+          "bbox": [
+            0.049,
+            0.936,
+            0.091,
+            0.959
+          ],
+          "content": ""
+        }
+      ]
+    },
+    {
+      "page_idx": 2,
+      "blocks": [
+        {
+          "type": "text",
+          "bbox": [
+            0.042,
+            0.024,
+            0.956,
+            0.315
+          ],
+          "content": ". , -. -,.      . .,,  ,   -,   ,,  ,."
+        },
+        {
+          "type": "text",
+          "bbox": [
+            0.041,
+            0.316,
+            0.954,
+            0.486
+          ],
+          "content": ":, 5,      -. 1-.   - n    ,,   . 2."
+        },
+        {
+          "type": "text",
+          "bbox": [
+            0.046,
+            0.486,
+            0.958,
+            0.705
+          ],
+          "content": ", MOKHO ,- “ ;..   ,   , aa ,  -,  ?"
+        },
+        {
+          "type": "paragraph_title",
+          "bbox": [
+            0.313,
+            0.729,
+            0.693,
+            0.756
+          ],
+          "level": 3,
+          "content": "2.  ."
+        },
+        {
+          "type": "text",
+          "bbox": [
+            0.045,
+            0.775,
+            0.958,
+            0.922
+          ],
+          "content": ", “,,  . 2 ( 1  1).,  “  ,.  .-.   -,"
+        },
+        {
+          "type": "page_number",
+          "bbox": [
+            0.911,
+            0.942,
+            0.953,
+            0.965
+          ],
+          "content": ""
+        }
+      ]
+    },
+    {
+      "page_idx": 3,
+      "blocks": [
+        {
+          "type": "text",
+          "bbox": [
+            0.041,
+            0.024,
+            0.96,
+            0.195
+          ],
+          "content": "16“  ,.   . , “,  -;   ,,    ,;    : ,, , ,  ."
+        },
+        {
+          "type": "text",
+          "bbox": [
+            0.04,
+            0.194,
+            0.961,
+            0.825
+          ],
+          "content": "-,  , (. .  -,    , 2   .  , -. ,    ,  - -  - -,, ,     -.   ,   -,   3    ,   ,,,      -. 3,.   - -,   -,   3    , 3.   - -,   . 3."
+        },
+        {
+          "type": "text",
+          "bbox": [
+            0.043,
+            0.824,
+            0.96,
+            0.922
+          ],
+          "content": ",  , -. 3,       1 -,      ;  - 30M, ,"
+        },
+        {
+          "type": "page_number",
+          "bbox": [
+            0.054,
+            0.943,
+            0.097,
+            0.966
+          ],
+          "content": ""
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "file_suffix": "pdf",
+    "producer": {
+      "name": "mineru",
+      "version": "4.2.3"
+    },
+    "document": {
+      "created_at": "2026-11-24T06:45:33Z",
+      "modified_at": "2026-11-24T06:45:33Z",
+      "page_count": 4,
+      "page_count_kind": "physical"
+    }
+  },
+  "extensions": {
+    "mineru": {
+      "tier": "basic",
+      "parse_mode": "ocr"
+    },
+    "docvortex_layout": {
+      "version": 1,
+      "pages": [
+        {
+          "page_idx": 0,
+          "width_pt": 1200,
+          "height_pt": 1860
+        },
+        {
+          "page_idx": 1,
+          "width_pt": 1200,
+          "height_pt": 1860
+        },
+        {
+          "page_idx": 2,
+          "width_pt": 1200,
+          "height_pt": 1860
+        },
+        {
+          "page_idx": 3,
+          "width_pt": 1200,
+          "height_pt": 1860
+        }
+      ]
+    }
+  },
+  "is_full_document": true
+}

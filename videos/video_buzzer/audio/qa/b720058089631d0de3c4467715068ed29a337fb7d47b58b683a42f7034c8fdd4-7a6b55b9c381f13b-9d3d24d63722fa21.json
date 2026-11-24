@@ -1,0 +1,340 @@
+{
+  "wav_sha256": "b720058089631d0de3c4467715068ed29a337fb7d47b58b683a42f7034c8fdd4",
+  "text_sha256": "7a6b55b9c381f13b41be6ea9703e1a98558182dcefe627b741be2d2249c58814",
+  "policy_sha256": "9d3d24d63722fa2178cd3b22777c719e778e2d356eaf3f4847ad256f99bc4cba",
+  "profile": {
+    "revision": 1,
+    "engine": "faster-whisper",
+    "model": "base",
+    "language": "ru",
+    "beam_size": 5,
+    "compute_type": "int8",
+    "sample_rate": 16000,
+    "packages": {
+      "faster-whisper": "1.2.1",
+      "pymorphy3": "2.0.6",
+      "num2words": "0.5.14",
+      "snowballstemmer": "3.1.1"
+    },
+    "verifier_sha256": "e5f63a4a1b2c3929b07777382a0a5fc7589573e978772d89660f19c2bbc30852",
+    "normalizer_sha256": "4ec3c644b7dd45ed91270112667ac31c2b60a070e18b5b3e26b799e3299d4661"
+  },
+  "expected_text": "Для успеха второго плана нужны все три события подряд. Перемножим их вероятности: семьдесят сотых на пятьдесят сотых и ещё на семьдесят сотых — выходит около двадцати пяти процентов! Даже один дальний бросок даёт тридцать — это больше!",
+  "transcript": "Для успеха второго плана нужны все три события подряд, перемножим их вероятности, 70-х на 50-х и еще на 70-х. Выходит около 25%, даже один дальний бросок дает 30, это больше.",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 3.32,
+      "text": " Для успеха второго плана нужны все три события подряд,",
+      "words": [
+        {
+          "start": 0.0,
+          "end": 0.32,
+          "word": " Для"
+        },
+        {
+          "start": 0.32,
+          "end": 0.82,
+          "word": " успеха"
+        },
+        {
+          "start": 0.82,
+          "end": 1.18,
+          "word": " второго"
+        },
+        {
+          "start": 1.18,
+          "end": 1.52,
+          "word": " плана"
+        },
+        {
+          "start": 1.52,
+          "end": 1.9,
+          "word": " нужны"
+        },
+        {
+          "start": 1.9,
+          "end": 2.2,
+          "word": " все"
+        },
+        {
+          "start": 2.2,
+          "end": 2.5,
+          "word": " три"
+        },
+        {
+          "start": 2.5,
+          "end": 3.02,
+          "word": " события"
+        },
+        {
+          "start": 3.02,
+          "end": 3.32,
+          "word": " подряд,"
+        }
+      ]
+    },
+    {
+      "start": 3.66,
+      "end": 4.9,
+      "text": " перемножим их вероятности,",
+      "words": [
+        {
+          "start": 3.66,
+          "end": 4.24,
+          "word": " перемножим"
+        },
+        {
+          "start": 4.24,
+          "end": 4.36,
+          "word": " их"
+        },
+        {
+          "start": 4.36,
+          "end": 4.9,
+          "word": " вероятности,"
+        }
+      ]
+    },
+    {
+      "start": 5.46,
+      "end": 9.12,
+      "text": " 70-х на 50-х и еще на 70-х.",
+      "words": [
+        {
+          "start": 5.46,
+          "end": 5.84,
+          "word": " 70"
+        },
+        {
+          "start": 5.84,
+          "end": 6.5,
+          "word": "-х"
+        },
+        {
+          "start": 6.5,
+          "end": 6.66,
+          "word": " на"
+        },
+        {
+          "start": 6.66,
+          "end": 7.06,
+          "word": " 50"
+        },
+        {
+          "start": 7.06,
+          "end": 7.74,
+          "word": "-х"
+        },
+        {
+          "start": 7.74,
+          "end": 7.94,
+          "word": " и"
+        },
+        {
+          "start": 7.94,
+          "end": 8.24,
+          "word": " еще"
+        },
+        {
+          "start": 8.24,
+          "end": 8.36,
+          "word": " на"
+        },
+        {
+          "start": 8.36,
+          "end": 8.72,
+          "word": " 70"
+        },
+        {
+          "start": 8.72,
+          "end": 9.12,
+          "word": "-х."
+        }
+      ]
+    },
+    {
+      "start": 9.58,
+      "end": 11.8,
+      "text": " Выходит около 25%,",
+      "words": [
+        {
+          "start": 9.58,
+          "end": 10.0,
+          "word": " Выходит"
+        },
+        {
+          "start": 10.0,
+          "end": 10.24,
+          "word": " около"
+        },
+        {
+          "start": 10.24,
+          "end": 11.8,
+          "word": " 25%,"
+        }
+      ]
+    },
+    {
+      "start": 11.8,
+      "end": 15.14,
+      "text": " даже один дальний бросок дает 30, это больше.",
+      "words": [
+        {
+          "start": 11.8,
+          "end": 12.56,
+          "word": " даже"
+        },
+        {
+          "start": 12.56,
+          "end": 13.06,
+          "word": " один"
+        },
+        {
+          "start": 13.06,
+          "end": 13.44,
+          "word": " дальний"
+        },
+        {
+          "start": 13.44,
+          "end": 13.84,
+          "word": " бросок"
+        },
+        {
+          "start": 13.84,
+          "end": 14.04,
+          "word": " дает"
+        },
+        {
+          "start": 14.04,
+          "end": 14.42,
+          "word": " 30,"
+        },
+        {
+          "start": 14.7,
+          "end": 14.8,
+          "word": " это"
+        },
+        {
+          "start": 14.8,
+          "end": 15.14,
+          "word": " больше."
+        }
+      ]
+    }
+  ],
+  "comparison": {
+    "ok": false,
+    "issues": [
+      "Numbers, units, negation or scientific qualifiers do not match",
+      "Extra/missing speech: 3 inserted and 0 deleted tokens",
+      "Transcript mismatch exceeds conservative ASR tolerance (19.4%)"
+    ],
+    "warnings": [],
+    "foreign_words": [],
+    "insertions": 3,
+    "deletions": 0,
+    "substitutions": 3,
+    "word_error_rate": 0.1935,
+    "edits": [
+      {
+        "kind": "insertion",
+        "actual": "#number:70"
+      },
+      {
+        "kind": "substitution",
+        "expected": "#number:7/10",
+        "actual": "х"
+      },
+      {
+        "kind": "insertion",
+        "actual": "#number:50"
+      },
+      {
+        "kind": "substitution",
+        "expected": "#number:1/2",
+        "actual": "х"
+      },
+      {
+        "kind": "insertion",
+        "actual": "#number:70"
+      },
+      {
+        "kind": "substitution",
+        "expected": "#number:7/10",
+        "actual": "х"
+      }
+    ],
+    "expected_tokens": [
+      "для",
+      "успех",
+      "#number:2",
+      "план",
+      "нужн",
+      "все",
+      "#number:3",
+      "событ",
+      "подряд",
+      "перемнож",
+      "он",
+      "вероятн",
+      "#number:7/10",
+      "на",
+      "#number:1/2",
+      "и",
+      "ещ",
+      "на",
+      "#number:7/10",
+      "выход",
+      "окол",
+      "#number:25",
+      "процент",
+      "даж",
+      "#number:1",
+      "дальн",
+      "бросок",
+      "дава",
+      "#number:30",
+      "эт",
+      "больш"
+    ],
+    "actual_tokens": [
+      "для",
+      "успех",
+      "#number:2",
+      "план",
+      "нужн",
+      "все",
+      "#number:3",
+      "событ",
+      "подряд",
+      "перемнож",
+      "он",
+      "вероятн",
+      "#number:70",
+      "х",
+      "на",
+      "#number:50",
+      "х",
+      "и",
+      "ещ",
+      "на",
+      "#number:70",
+      "х",
+      "выход",
+      "окол",
+      "#number:25",
+      "процент",
+      "даж",
+      "#number:1",
+      "дальн",
+      "бросок",
+      "дава",
+      "#number:30",
+      "эт",
+      "больш"
+    ]
+  },
+  "ok": false,
+  "checked_at": "2026-11-24T14:34:06.553822+00:00"
+}

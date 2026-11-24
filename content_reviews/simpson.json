@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "topic": "simpson",
+  "script_sha256": "bb087bd11024599beff172c52f177e227904cdc134cb7edbf2255bfa798f4a0d",
+  "scene_file": "src/math_books/simpson_basketball_scene.py",
+  "scene_sha256": "5f0af2247a4c3c2bd13e96163af0295d5f38a77a1914b711e08bae3397906d5d",
+  "pedagogy": {
+    "audience_age": 12,
+    "learning_objective": "",
+    "prerequisites": [],
+    "assumptions": [],
+    "limitations": [],
+    "challenge": "",
+    "expected_learning": ""
+  },
+  "sources": [],
+  "math_checks": [],
+  "scene_reviews": [
+    {
+      "scene_id": "01_hook",
+      "teaching_role": "",
+      "claims": [
+        {
+          "statement": "",
+          "script_quote": "Как игрок может бросать точнее соперника и с двухочковой, и с трёхочковой дистанции, но в общей статистике всё равно проигрывать? Это парадокс Симпсона — и нет, его придумал не Гомер Симпсон, а британский математик и взломщик шифров Эдвард Симпсон!",
+          "kind": "",
+          "source_ids": [],
+          "math_check_ids": [],
+          "reasoning": ""
+        }
+      ]
+    },
+    {
+      "scene_id": "02_duel_stats",
+      "teaching_role": "",
+      "claims": [
+        {
+          "statement": "",
+          "script_quote": "Смотри на реальный пример. Алекс и Макс сделали по сто бросков. Двухочковые: у Алекса шестьдесят процентов, у Макса — пятьдесят. Алекс точнее! Трёхочковые: у Алекса сорок процентов, у Макса — тридцать. И здесь Алекс точнее!",
+          "kind": "",
+          "source_ids": [],
+          "math_check_ids": [],
+          "reasoning": ""
+        }
+      ]
+    },
+    {
+      "scene_id": "03_paradox",
+      "teaching_role": "",
+      "claims": [
+        {
+          "statement": "",
+          "script_quote": "А теперь считаем общий процент попаданий. У Алекса — сорок два процента, а у Макса — сорок восемь! Как такое возможно? Алекс победил в обеих категориях, но проиграл в общей таблице!",
+          "kind": "",
+          "source_ids": [],
+          "math_check_ids": [],
+          "reasoning": ""
+        }
+      ]
+    },
+    {
+      "scene_id": "04_secret",
+      "teaching_role": "",
+      "claims": [
+        {
+          "statement": "",
+          "script_quote": "Секрет — в количестве бросков! Алекс бросил девяносто трёхочковых, а Макс — девяносто двухочковых. Сложные дальние броски утянули средний процент Алекса вниз. Но по очкам Алекс разгромил Макса: сто двадцать против девяноста девяти!",
+          "kind": "",
+          "source_ids": [],
+          "math_check_ids": [],
+          "reasoning": ""
+        }
+      ]
+    },
+    {
+      "scene_id": "05_challenge",
+      "teaching_role": "",
+      "claims": [
+        {
+          "statement": "",
+          "script_quote": "Вот почему в современном баскетболе не верят одному общему проценту. Запоминай: всегда смотри, откуда именно бросал игрок — и не дай статистике себя обмануть!",
+          "kind": "",
+          "source_ids": [],
+          "math_check_ids": [],
+          "reasoning": ""
+        }
+      ]
+    }
+  ],
+  "unresolved_issues": [],
+  "reviews": {
+    "scientific": {
+      "reviewer": "",
+      "reviewer_type": "",
+      "reviewed_at": "",
+      "verdict": "pending",
+      "dossier_sha256": "",
+      "criteria": {
+        "evidence_matches_claims": {
+          "passed": false,
+          "rationale": ""
+        },
+        "calculations_correct": {
+          "passed": false,
+          "rationale": ""
+        },
+        "assumptions_and_limits": {
+          "passed": false,
+          "rationale": ""
+        },
+        "no_overclaim": {
+          "passed": false,
+          "rationale": ""
+        }
+      }
+    },
+    "pedagogical": {
+      "reviewer": "",
+      "reviewer_type": "",
+      "reviewed_at": "",
+      "verdict": "pending",
+      "dossier_sha256": "",
+      "criteria": {
+        "age_and_prerequisites": {
+          "passed": false,
+          "rationale": ""
+        },
+        "objective_alignment": {
+          "passed": false,
+          "rationale": ""
+        },
+        "explanation_clarity": {
+          "passed": false,
+          "rationale": ""
+        },
+        "challenge_checks_understanding": {
+          "passed": false,
+          "rationale": ""
+        }
+      }
+    }
+  },
+  "supporting_files": {
+    "src/math_books/lesson_math.py": "62de0619be031ffecf608750e1311166a9300eb3ca1834544fb276e1d1a39209",
+    "src/math_books/video_ui.py": "6d62aa0d63ade4828c42c88363292522facf41f59ecb33b355e3ef6237bbc9e3"
+  }
+}

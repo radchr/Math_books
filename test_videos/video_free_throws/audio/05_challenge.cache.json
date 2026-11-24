@@ -1,0 +1,21 @@
+{
+  "fingerprint": "c9aeee593c8e3dd7e55d2009fa7d1dc931e3441d737726c93d0b7d2cbe22faf6",
+  "model": "gemini-2.5-flash-preview-tts",
+  "voice": "Puck",
+  "wav_sha256": "733f745c66b93d51ab75015510b04b832fade569ff6ddfe529f79745e50bfba8",
+  "wav": "clips/05_challenge-c9aeee593c8e-733f745c66b9.wav",
+  "audio_qa_edit": {
+    "source_wav_sha256": "761bf37f4208ec9177aef0d757d11c804862cf53363036d0e47ec9a4a0417210",
+    "keep_ranges_s": [
+      [
+        0,
+        9.15
+      ],
+      [
+        9.6,
+        null
+      ]
+    ],
+    "reason": "Shorten 450 ms entirely inside the detected 9.023–10.413 s silent interval; retain spoken words and the thinking pause before the answer."
+  }
+}

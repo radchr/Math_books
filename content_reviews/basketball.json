@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "topic": "basketball",
+  "script_sha256": "b71cf81bb1461bb5e56853bf0d90e19320254141a9831abff941941d1c0c4124",
+  "scene_file": "src/math_books/basketball_triangles_scene.py",
+  "scene_sha256": "929e68b9f4099134c80bd064b6d1b9b2666250211a5e70e2a26676e870534843",
+  "pedagogy": {
+    "audience_age": 12,
+    "learning_objective": "",
+    "prerequisites": [],
+    "assumptions": [],
+    "limitations": [],
+    "challenge": "",
+    "expected_learning": ""
+  },
+  "sources": [],
+  "math_checks": [],
+  "scene_reviews": [
+    {
+      "scene_id": "01_hook",
+      "teaching_role": "",
+      "claims": [
+        {
+          "statement": "",
+          "script_quote": "Думаешь, треугольники — это скучная геометрия из учебника? На самом деле, без треугольников невозможно ни забить в кольцо, ни обыграть защиту!",
+          "kind": "",
+          "source_ids": [],
+          "math_check_ids": [],
+          "reasoning": ""
+        }
+      ]
+    },
+    {
+      "scene_id": "02_triangle_offense",
+      "teaching_role": "",
+      "claims": [
+        {
+          "statement": "",
+          "script_quote": "Секрет первый: легендарное нападение треугольником, с которым Майкл Джордан и Коби Брайант выиграли одиннадцать чемпионств. Три игрока образуют треугольник, а пас идёт по его сторонам. Защитники просто не успевают перекрыть сразу два направления!",
+          "kind": "",
+          "source_ids": [],
+          "math_check_ids": [],
+          "reasoning": ""
+        }
+      ]
+    },
+    {
+      "scene_id": "03_bank_shot",
+      "teaching_role": "",
+      "claims": [
+        {
+          "statement": "",
+          "script_quote": "Секрет второй: бросок от щита. Почему мяч летит точно в цель? Здесь работают равные треугольники! Угол падения мяча на щит всегда равен углу отскока. Целься в верхний угол квадрата на щите — и мяч сам нырнёт в сетку.",
+          "kind": "",
+          "source_ids": [],
+          "math_check_ids": [],
+          "reasoning": ""
+        }
+      ]
+    },
+    {
+      "scene_id": "04_arc_angle",
+      "teaching_role": "",
+      "claims": [
+        {
+          "statement": "",
+          "script_quote": "Секрет третий: почему Стеф Карри бросает по высокой дуге? Представь треугольник от рук до кольца. Чем круче угол броска — примерно сорок восемь градусов — тем шире кажется кольцо для мяча, и шансы попасть резко растут!",
+          "kind": "",
+          "source_ids": [],
+          "math_check_ids": [],
+          "reasoning": ""
+        }
+      ]
+    },
+    {
+      "scene_id": "05_challenge",
+      "teaching_role": "",
+      "claims": [
+        {
+          "statement": "",
+          "script_quote": "А теперь челлендж для тебя: представь треугольник на площадке — две штанги кольца и точка броска. Откуда угол обзора кольца больше: прямо по центру на трёхочковой или в самом углу площадки? Подумай и проверь на тренировке!",
+          "kind": "",
+          "source_ids": [],
+          "math_check_ids": [],
+          "reasoning": ""
+        }
+      ]
+    }
+  ],
+  "unresolved_issues": [],
+  "reviews": {
+    "scientific": {
+      "reviewer": "",
+      "reviewer_type": "",
+      "reviewed_at": "",
+      "verdict": "pending",
+      "dossier_sha256": "",
+      "criteria": {
+        "evidence_matches_claims": {
+          "passed": false,
+          "rationale": ""
+        },
+        "calculations_correct": {
+          "passed": false,
+          "rationale": ""
+        },
+        "assumptions_and_limits": {
+          "passed": false,
+          "rationale": ""
+        },
+        "no_overclaim": {
+          "passed": false,
+          "rationale": ""
+        }
+      }
+    },
+    "pedagogical": {
+      "reviewer": "",
+      "reviewer_type": "",
+      "reviewed_at": "",
+      "verdict": "pending",
+      "dossier_sha256": "",
+      "criteria": {
+        "age_and_prerequisites": {
+          "passed": false,
+          "rationale": ""
+        },
+        "objective_alignment": {
+          "passed": false,
+          "rationale": ""
+        },
+        "explanation_clarity": {
+          "passed": false,
+          "rationale": ""
+        },
+        "challenge_checks_understanding": {
+          "passed": false,
+          "rationale": ""
+        }
+      }
+    }
+  },
+  "supporting_files": {
+    "src/math_books/lesson_math.py": "62de0619be031ffecf608750e1311166a9300eb3ca1834544fb276e1d1a39209",
+    "src/math_books/video_ui.py": "6d62aa0d63ade4828c42c88363292522facf41f59ecb33b355e3ef6237bbc9e3"
+  }
+}

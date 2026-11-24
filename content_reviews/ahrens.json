@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "topic": "ahrens",
+  "script_sha256": "d20bbeabe2f92e7b73af2974c6cf2833e9425a663ffbcb9009e8844f417a6b01",
+  "scene_file": "src/math_books/ahrens_basketball_scene.py",
+  "scene_sha256": "758469f6ff6fe7664ef925f7c3b8db33fddb88c3200ac880d180069f9b336b32",
+  "pedagogy": {
+    "audience_age": 12,
+    "learning_objective": "",
+    "prerequisites": [],
+    "assumptions": [],
+    "limitations": [],
+    "challenge": "",
+    "expected_learning": ""
+  },
+  "sources": [],
+  "math_checks": [],
+  "scene_reviews": [
+    {
+      "scene_id": "01_hook",
+      "teaching_role": "",
+      "claims": [
+        {
+          "statement": "",
+          "script_quote": "В книге математических игр тысяча девятьсот двадцать четвёртого года есть секрет, с которым ты будешь выигрывать дуэль один на один почти всегда!",
+          "kind": "",
+          "source_ids": [],
+          "math_check_ids": [],
+          "reasoning": ""
+        }
+      ]
+    },
+    {
+      "scene_id": "02_rules",
+      "teaching_role": "",
+      "claims": [
+        {
+          "statement": "",
+          "script_quote": "Сыграем в баскетбольную игру до двадцати одного очка на общем табло. Ты и соперник ходите по очереди. За один ход можно добавить на табло одно, два или три очка. Кто первым забьёт ровно двадцать первое очко — тот победил!",
+          "kind": "",
+          "source_ids": [],
+          "math_check_ids": [],
+          "reasoning": ""
+        }
+      ]
+    },
+    {
+      "scene_id": "03_key_17",
+      "teaching_role": "",
+      "claims": [
+        {
+          "statement": "",
+          "script_quote": "Как победить гарантированно? Считаем с конца! Чтобы точно забить двадцать один, нужно оставить на табло семнадцать. Ведь соперник добавит максимум три — это двадцать, и минимум одно — это восемнадцать. В любом случае следующим ходом ты добираешь до двадцати одного!",
+          "kind": "",
+          "source_ids": [],
+          "math_check_ids": [],
+          "reasoning": ""
+        }
+      ]
+    },
+    {
+      "scene_id": "04_chain",
+      "teaching_role": "",
+      "claims": [
+        {
+          "statement": "",
+          "script_quote": "А чтобы попасть на семнадцать, нужно занять тринадцать, перед этим девять, пять и самое первое — один! Заметил шаг? Минимум плюс максимум: один плюс три равно четыре. Начинай игру с одного очка — и просто дополняй каждый ход соперника до четырёх!",
+          "kind": "",
+          "source_ids": [],
+          "math_check_ids": [],
+          "reasoning": ""
+        }
+      ]
+    },
+    {
+      "scene_id": "05_challenge",
+      "teaching_role": "",
+      "claims": [
+        {
+          "statement": "",
+          "script_quote": "А теперь задача из самой книги Аренса: табло до ста очков, добавлять можно от одного до десяти. С какого числа нужно начать, чтобы точно выиграть? Попробуй посчитать сам!",
+          "kind": "",
+          "source_ids": [],
+          "math_check_ids": [],
+          "reasoning": ""
+        }
+      ]
+    }
+  ],
+  "unresolved_issues": [],
+  "reviews": {
+    "scientific": {
+      "reviewer": "",
+      "reviewer_type": "",
+      "reviewed_at": "",
+      "verdict": "pending",
+      "dossier_sha256": "",
+      "criteria": {
+        "evidence_matches_claims": {
+          "passed": false,
+          "rationale": ""
+        },
+        "calculations_correct": {
+          "passed": false,
+          "rationale": ""
+        },
+        "assumptions_and_limits": {
+          "passed": false,
+          "rationale": ""
+        },
+        "no_overclaim": {
+          "passed": false,
+          "rationale": ""
+        }
+      }
+    },
+    "pedagogical": {
+      "reviewer": "",
+      "reviewer_type": "",
+      "reviewed_at": "",
+      "verdict": "pending",
+      "dossier_sha256": "",
+      "criteria": {
+        "age_and_prerequisites": {
+          "passed": false,
+          "rationale": ""
+        },
+        "objective_alignment": {
+          "passed": false,
+          "rationale": ""
+        },
+        "explanation_clarity": {
+          "passed": false,
+          "rationale": ""
+        },
+        "challenge_checks_understanding": {
+          "passed": false,
+          "rationale": ""
+        }
+      }
+    }
+  },
+  "supporting_files": {
+    "src/math_books/lesson_math.py": "62de0619be031ffecf608750e1311166a9300eb3ca1834544fb276e1d1a39209",
+    "src/math_books/video_ui.py": "6d62aa0d63ade4828c42c88363292522facf41f59ecb33b355e3ef6237bbc9e3"
+  }
+}

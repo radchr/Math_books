@@ -1,0 +1,7 @@
+{
+  "fingerprint": "8ec7a735f35d1209de29787cee4b76a2fd14285630a40eddae6ced09f3d4a5ec",
+  "model": "gemini-2.5-flash-preview-tts",
+  "voice": "Puck",
+  "wav_sha256": "82f664d4f75e39b05dfaf134eb31b108f85908b1306f49c3fdaeba696496adf3",
+  "wav": "clips/02_coin_trap-8ec7a735f35d-82f664d4f75e.wav"
+}

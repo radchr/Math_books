@@ -1,0 +1,206 @@
+{
+  "schema_version": 1,
+  "topic": "moneybart",
+  "script_sha256": "6fa69c0eb5ceabf09e70273b684354884415da72aaeca6e542e5558a96a15c15",
+  "scene_file": "src/math_books/moneybart_scene.py",
+  "scene_sha256": "7c5d846c0509a3f6ef81903fa285b6cf4a299451e2043ded99beda3cac808f14",
+  "pedagogy": {
+    "audience_age": 12,
+    "learning_objective": "Compute and compare expected points per shot for two-point and three-point attempts under fixed probabilities without confusing expectation with a guaranteed single-game win.",
+    "prerequisites": [
+      "Percentages as decimals or hundredths",
+      "Decimal multiplication"
+    ],
+    "assumptions": [
+      "Fixed illustrative shooting probabilities: 50 percent on two-point shots and 35 percent on three-point shots",
+      "Equal number of attempts (100 shots) for comparing expected totals",
+      "No fouls, free throws, turnovers or offensive rebounds included in the basic expected-points model"
+    ],
+    "limitations": [
+      "Expected points describe the long-run average in the model, not a guaranteed score or win in a single match",
+      "Optimal shot selection in real games depends on the individual player and defense",
+      "Ten practice shots per location are only an initial trial and must be repeated across multiple days"
+    ],
+    "challenge": "Take 10 mid-range two-point shots and 10 three-point shots in practice, compute points per attempt, and repeat across multiple days to compare averages.",
+    "expected_learning": "The learner multiplies hit probability by shot value (0.50*2=1.00 vs 0.35*3=1.05), explains why 35 percent from three yields a higher expected score than 50 percent from two, and recognizes why 10 shots are only a starting sample."
+  },
+  "sources": [
+    {
+      "id": "openstax-expected-value",
+      "kind": "textbook",
+      "title": "OpenStax Introductory Statistics 2e, 4.2 Mean or Expected Value and Standard Deviation",
+      "url": "https://openstax.org/books/introductory-statistics-2e/pages/4-2-mean-or-expected-value-and-standard-deviation",
+      "locator": "Expected value definition E(X) = sum x * P(x) for a discrete random variable and interpretation as long-term average over repeated trials."
+    }
+  ],
+  "math_checks": [
+    {
+      "id": "two-point-ev",
+      "kind": "expected_points",
+      "probability": "0.50",
+      "points": 2,
+      "expected": "1.00"
+    },
+    {
+      "id": "three-point-ev",
+      "kind": "expected_points",
+      "probability": "0.35",
+      "points": 3,
+      "expected": "1.05"
+    }
+  ],
+  "scene_reviews": [
+    {
+      "scene_id": "01_hook",
+      "teaching_role": "Frame the question of whether a lower hit percentage can produce more points per attempt.",
+      "claims": [
+        {
+          "statement": "Comparing strategies by expected points per attempt is a standard mathematical modeling question.",
+          "script_quote": "А можно ли в баскетболе попадать реже, но набирать больше очков?",
+          "kind": "model",
+          "source_ids": [
+            "openstax-expected-value"
+          ],
+          "math_check_ids": [],
+          "reasoning": "The cartoon reference is a narrative hook; the mathematical question compares expected payoff when point values differ."
+        }
+      ]
+    },
+    {
+      "scene_id": "02_middle_trap",
+      "teaching_role": "Calculate the expected value of a 2-point shot at 50 percent accuracy.",
+      "claims": [
+        {
+          "statement": "A two-point shot made with probability 0.50 yields 0.50 * 2 = 1.00 expected point per attempt.",
+          "script_quote": "Допустим, ты попадаешь ровно половину таких бросков — пятьдесят процентов. Умножаем на два очка и получаем в среднем одно очко за бросок.",
+          "kind": "mathematical",
+          "source_ids": [
+            "openstax-expected-value"
+          ],
+          "math_check_ids": [
+            "two-point-ev"
+          ],
+          "reasoning": "For a two-point attempt with success probability 0.50 and miss payoff 0, E(X) = 2 * 0.50 + 0 * 0.50 = 1.00."
+        }
+      ]
+    },
+    {
+      "scene_id": "03_three_wins",
+      "teaching_role": "Calculate the expected value of a 3-point shot at 35 percent accuracy, scale to 100 attempts, and state that expectation is not a single-game guarantee.",
+      "claims": [
+        {
+          "statement": "A three-point shot made with probability 0.35 yields 0.35 * 3 = 1.05 expected points per attempt, or 105 expected points over 100 attempts versus 100.",
+          "script_quote": "что если бросать трёхочковые с точностью всего тридцать пять процентов? Умножаем на три очка — выходит одна целая и пять сотых! За сто таких бросков ожидаем сто пять очков против ста.",
+          "kind": "mathematical",
+          "source_ids": [
+            "openstax-expected-value"
+          ],
+          "math_check_ids": [
+            "two-point-ev",
+            "three-point-ev"
+          ],
+          "reasoning": "By linearity of expectation over 100 attempts, 100 * 1.05 = 105 expected points compared with 100 * 1.00 = 100."
+        },
+        {
+          "statement": "Higher expected value does not guarantee winning an individual game because realized outcomes vary.",
+          "script_quote": "В среднем выгоднее, но победа в одном матче не гарантирована!",
+          "kind": "model",
+          "source_ids": [
+            "openstax-expected-value"
+          ],
+          "math_check_ids": [],
+          "reasoning": "Expected value represents the mean of the distribution, not a deterministic outcome for one finite match."
+        }
+      ]
+    },
+    {
+      "scene_id": "04_nba_map",
+      "teaching_role": "State real-world context and explicit model exclusions (defense, player skill, free throws, turnovers, rebounds).",
+      "claims": [
+        {
+          "statement": "The simplified expected-points comparison omits free throws, turnovers and rebounds, and real shot value depends on the player and defense.",
+          "script_quote": "Но средний бросок тоже бывает полезен: всё зависит от игрока и защиты. Здесь мы не учитываем штрафные, потери и подборы.",
+          "kind": "model",
+          "source_ids": [
+            "openstax-expected-value"
+          ],
+          "math_check_ids": [],
+          "reasoning": "Explicitly communicates the boundary conditions of the two-outcome Bernoulli scoring model."
+        }
+      ]
+    },
+    {
+      "scene_id": "05_challenge",
+      "teaching_role": "Give an actionable practice experiment while warning that 10 attempts per zone are only a starting sample.",
+      "claims": [
+        {
+          "statement": "Recording points per shot over 10 attempts per zone practices the calculation, and repeating across days reduces small-sample noise.",
+          "script_quote": "сделай десять средних бросков и десять трёхочковых. Посчитай очки за бросок. Десять попыток — только начало: повтори в другие дни и сравни средние!",
+          "kind": "model",
+          "source_ids": [
+            "openstax-expected-value"
+          ],
+          "math_check_ids": [],
+          "reasoning": "Ten attempts have large sampling variance; repeating on multiple days illustrates convergence toward a stable average."
+        }
+      ]
+    }
+  ],
+  "unresolved_issues": [],
+  "reviews": {
+    "scientific": {
+      "reviewer": "Antigravity AI scientific/pedagogical review",
+      "reviewer_type": "ai",
+      "reviewed_at": "2026-11-24",
+      "verdict": "approved",
+      "dossier_sha256": "a9198a3b5bcd3956755f52199cb3d16df2114e53baf3c7d68904b265758b51c0",
+      "criteria": {
+        "evidence_matches_claims": {
+          "passed": true,
+          "rationale": "All claims are framed as a discrete expected-value model supported by OpenStax 4.2; no unverified historical or causal NBA statistics are asserted."
+        },
+        "calculations_correct": {
+          "passed": true,
+          "rationale": "Exact fraction checks confirm 0.50 * 2 = 1.00 and 0.35 * 3 = 1.05, and 100 attempts scale expectations to 100 and 105."
+        },
+        "assumptions_and_limits": {
+          "passed": true,
+          "rationale": "Scene 2 and Scene 3 state the hypothetical percentages explicitly, and Scene 4 lists omitted factors (free throws, turnovers, rebounds, defense)."
+        },
+        "no_overclaim": {
+          "passed": true,
+          "rationale": "Scene 3 explicitly distinguishes higher average points from a guaranteed match win, and Scene 5 notes that 10 shots are only a beginning."
+        }
+      }
+    },
+    "pedagogical": {
+      "reviewer": "Antigravity AI scientific/pedagogical review",
+      "reviewer_type": "ai",
+      "reviewed_at": "2026-11-24",
+      "verdict": "approved",
+      "dossier_sha256": "a9198a3b5bcd3956755f52199cb3d16df2114e53baf3c7d68904b265758b51c0",
+      "criteria": {
+        "age_and_prerequisites": {
+          "passed": true,
+          "rationale": "Multiplying 50% by 2 and 35% by 3 uses grade-6 decimal/percentage arithmetic familiar to a 12-year-old."
+        },
+        "objective_alignment": {
+          "passed": true,
+          "rationale": "Every scene builds directly toward comparing expected points per attempt and understanding its real-court caveats."
+        },
+        "explanation_clarity": {
+          "passed": true,
+          "rationale": "Both products (1.00 and 1.05) and their 100-shot scaling (100 vs 105) are shown step by step in narration and on-screen formulas."
+        },
+        "challenge_checks_understanding": {
+          "passed": true,
+          "rationale": "Computing points per shot from 10 mid-range and 10 three-point attempts directly applies the expected-points formula while reinforcing sample-size awareness."
+        }
+      }
+    }
+  },
+  "supporting_files": {
+    "src/math_books/lesson_math.py": "62de0619be031ffecf608750e1311166a9300eb3ca1834544fb276e1d1a39209",
+    "src/math_books/video_ui.py": "6d62aa0d63ade4828c42c88363292522facf41f59ecb33b355e3ef6237bbc9e3"
+  }
+}

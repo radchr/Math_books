@@ -1,0 +1,7 @@
+{
+  "fingerprint": "ac81175538a2ebee8c03c31a1bc5ed9dc7ac7c89c4c8572b36f9d663725921f3",
+  "model": "gemini-2.5-flash-preview-tts",
+  "voice": "Puck",
+  "wav_sha256": "f40e63db9db073a993d3754ff96560ff669349c44ff0b326cbb6290104d81ec5",
+  "wav": "clips/04_nba_revenge-ac81175538a2-f40e63db9db0.wav"
+}

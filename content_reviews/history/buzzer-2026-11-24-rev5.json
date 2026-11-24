@@ -1,0 +1,188 @@
+{
+  "schema_version": 1,
+  "topic": "buzzer",
+  "script_sha256": "e62d18a24f15528961ce3439dc22eb260f945b635b9a0694afec26ba9037ba6d",
+  "scene_file": "src/math_books/buzzer_scene.py",
+  "scene_sha256": "36b4d25d1f6dddc2a5c92bca945e850f3ada40b606df76cf5b88cc5a80aa7969",
+  "supporting_files": {
+    "src/math_books/lesson_math.py": "62de0619be031ffecf608750e1311166a9300eb3ca1834544fb276e1d1a39209",
+    "src/math_books/video_ui.py": "161cf123412fb3802909820098ad9d64d0f8228584888262086b038d8c841772"
+  },
+  "pedagogy": {
+    "audience_age": 12,
+    "learning_objective": "Apply the multiplication rule for independent sequential events to compare a single 30% three-point attempt with a three-step quick-two and foul chain (70% * 50% * 70% = 24.5%).",
+    "prerequisites": [
+      "Percentages as decimals (0.3, 0.7, 0.5, 0.8)",
+      "Multiplying decimals and fractions"
+    ],
+    "assumptions": [
+      "Stipulated model probabilities: 30% for a contested buzzer three, 70% for each quick two-point attempt, and 50% that the fouled opponent misses at least one free throw",
+      "The three steps in Plan B are modeled as independent events",
+      "No offensive rebounds, four-point plays, or turnovers outside the defined step probabilities"
+    ],
+    "limitations": [
+      "Probabilities are illustrative model inputs, not fixed universal NBA constants",
+      "In a real game, step probabilities depend on players, clock remaining, and team foul situation",
+      "A higher model probability does not guarantee success on a single possession"
+    ],
+    "challenge": "Compute the joint probability of a three-step independent chain when each step has an 80% chance of success (0.8 * 0.8 * 0.8 = 51.2%). Pause before revealing the answer.",
+    "expected_learning": "The learner multiplies the probabilities of sequential required steps, sees why three seemingly high probabilities (70%, 50%, 70%) multiply to 24.5% (< 30%), and computes 0.8^3 = 51.2%."
+  },
+  "sources": [
+    {
+      "id": "openstax-multiplication-rule",
+      "kind": "textbook",
+      "title": "OpenStax Introductory Statistics 2e, 3.3 Two Basic Rules of Probability",
+      "url": "https://openstax.org/books/introductory-statistics-2e/pages/3-3-two-basic-rules-of-probability",
+      "locator": "The Multiplication Rule for independent events: P(A and B and C) = P(A) * P(B) * P(C)."
+    }
+  ],
+  "math_checks": [],
+  "scene_reviews": [
+    {
+      "scene_id": "01_hook",
+      "teaching_role": "Present the end-of-game trailing-by-3 basketball dilemma and motivate mathematical comparison of two tactical plans.",
+      "claims": [
+        {
+          "statement": "Comparing a direct three-point attempt against a quick-two-and-foul sequence is a sequential probability modeling problem.",
+          "script_quote": "Какой план лучше: сразу сделать дальний бросок на три очка или быстро забить два и нарушить правила, чтобы вернуть мяч? Проверим математикой!",
+          "kind": "model",
+          "source_ids": [
+            "openstax-multiplication-rule"
+          ],
+          "math_check_ids": [],
+          "reasoning": "Frames the tactical decision as comparing the probability of a single event against the intersection of three sequential events."
+        }
+      ]
+    },
+    {
+      "scene_id": "02_three_shot",
+      "teaching_role": "Define Plan A in the model: one contested 3-point attempt with a stipulated 30% chance to force overtime.",
+      "claims": [
+        {
+          "statement": "In the stipulated model, Plan A requires one event with probability 0.30.",
+          "script_quote": "Считаем в модели. План первый: один дальний бросок через руки защитника. Допустим, в такой спешке шанс попасть — тридцать процентов.",
+          "kind": "model",
+          "source_ids": [
+            "openstax-multiplication-rule"
+          ],
+          "math_check_ids": [],
+          "reasoning": "Explicitly introduces 30% as a model assumption for a single contested three-point shot."
+        }
+      ]
+    },
+    {
+      "scene_id": "03_chain_plan",
+      "teaching_role": "Define Plan B as three sequential events with stipulated probabilities 70%, 50%, and 70%.",
+      "claims": [
+        {
+          "statement": "Plan B is modeled as three required stages with individual probabilities 0.70, 0.50, and 0.70.",
+          "script_quote": "План второй: точный проход под кольцо с шансом семьдесят процентов. Дальше соперник бьёт штрафные: пусть он промахнётся хотя бы раз в половине случаев. Затем наш ответный бросок на два очка снова даёт семьдесят процентов.",
+          "kind": "model",
+          "source_ids": [
+            "openstax-multiplication-rule"
+          ],
+          "math_check_ids": [],
+          "reasoning": "States each stage probability clearly as a hypothetical model parameter."
+        }
+      ]
+    },
+    {
+      "scene_id": "04_multiply",
+      "teaching_role": "Multiply the three independent step probabilities (0.7 * 0.5 * 0.7 = 24.5%) and compare with Plan A (30%).",
+      "claims": [
+        {
+          "statement": "For three independent events with probabilities 7/10, 1/2, and 7/10, the joint probability of all three occurring is (7/10)*(1/2)*(7/10) = 49/200 = 24.5%, which is less than 30%.",
+          "script_quote": "Умножаем вероятности независимых событий: семь десятых на одну вторую и ещё на семь десятых — выходит двадцать четыре и пять десятых процента! Даже один дальний бросок даёт тридцать — это больше!",
+          "kind": "mathematical",
+          "source_ids": [
+            "openstax-multiplication-rule"
+          ],
+          "math_check_ids": [],
+          "reasoning": "By the multiplication rule for independent events, P(A and B and C) = 0.7 * 0.5 * 0.7 = 0.245 = 24.5% < 30%.",
+          "proof": "Under independence, P(S1 and S2 and S3) = P(S1)*P(S2)*P(S3) = (7/10)*(1/2)*(7/10) = 49/200 = 0.245 = 24.5%. Comparing with Plan A: 49/200 < 60/200 (30%). Checked in tests/test_buzzer.py."
+        }
+      ]
+    },
+    {
+      "scene_id": "05_challenge",
+      "teaching_role": "Transfer the multiplication rule to a 3-step chain where each step has probability 80%, pause for calculation, and state the model limitation.",
+      "claims": [
+        {
+          "statement": "Three independent steps each with probability 0.80 have joint probability 0.8^3 = 0.512 = 51.2%.",
+          "script_quote": "если шанс каждого из трёх шагов вырастет до восьмидесяти процентов, каким станет общий шанс цепочки? Пауза! Ответ — пятьдесят один и две десятых процента.",
+          "kind": "mathematical",
+          "source_ids": [
+            "openstax-multiplication-rule"
+          ],
+          "math_check_ids": [],
+          "reasoning": "0.8 * 0.8 * 0.8 = 64/125 = 0.512 = 51.2%.",
+          "proof": "By the multiplication rule for three independent events with P(Si)=4/5, P(S1 and S2 and S3) = (4/5)^3 = 64/125 = 0.512 = 51.2%. Checked in tests/test_buzzer.py."
+        },
+        {
+          "statement": "The probability calculation is a model evaluation, not a guarantee of a single-game outcome.",
+          "script_quote": "Это расчёт модели, а не гарантия!",
+          "kind": "model",
+          "source_ids": [
+            "openstax-multiplication-rule"
+          ],
+          "math_check_ids": [],
+          "reasoning": "Explicitly reminds the viewer that a probabilistic model does not guarantee a deterministic result."
+        }
+      ]
+    }
+  ],
+  "unresolved_issues": [],
+  "reviews": {
+    "scientific": {
+      "reviewer": "Antigravity AI scientific/pedagogical review",
+      "reviewer_type": "ai",
+      "reviewed_at": "2026-11-24",
+      "verdict": "approved",
+      "dossier_sha256": "845d182b942885fc9043a39063a62500aa73e4e3ca7b2f41a6828c5412e376c1",
+      "criteria": {
+        "evidence_matches_claims": {
+          "passed": true,
+          "rationale": "OpenStax 3.3 multiplication rule for independent events directly supports multiplying sequential step probabilities in the stipulated model."
+        },
+        "calculations_correct": {
+          "passed": true,
+          "rationale": "Exact fraction arithmetic confirms (7/10)*(1/2)*(7/10) = 49/200 = 24.5% < 30% and (4/5)^3 = 64/125 = 51.2%, verified by unit tests in tests/test_buzzer.py."
+        },
+        "assumptions_and_limits": {
+          "passed": true,
+          "rationale": "Scenes 2, 3, and 4 explicitly state that calculations are performed in an independent-events model with hypothetical probabilities, and Scene 5 reiterates that model output is not a guarantee."
+        },
+        "no_overclaim": {
+          "passed": true,
+          "rationale": "No universal empirical claim is made about all NBA games; the lesson shows how multiplying step probabilities informs tactical comparison under given parameters."
+        }
+      }
+    },
+    "pedagogical": {
+      "reviewer": "Antigravity AI scientific/pedagogical review",
+      "reviewer_type": "ai",
+      "reviewed_at": "2026-11-24",
+      "verdict": "approved",
+      "dossier_sha256": "845d182b942885fc9043a39063a62500aa73e4e3ca7b2f41a6828c5412e376c1",
+      "criteria": {
+        "age_and_prerequisites": {
+          "passed": true,
+          "rationale": "A 12-year-old basketball fan easily relates to a 10-second buzzer-beater situation and can multiply simple decimals (0.7 * 0.5 * 0.7 and 0.8^3)."
+        },
+        "objective_alignment": {
+          "passed": true,
+          "rationale": "Every scene serves the objective of showing why sequential probability multiplication is useful for evaluating multi-step basketball tactics."
+        },
+        "explanation_clarity": {
+          "passed": true,
+          "rationale": "Scene 3 visually breaks down the three required steps and arrows, and Scene 4 shows the explicit multiplication formula and bar chart comparing 30% vs 24.5%."
+        },
+        "challenge_checks_understanding": {
+          "passed": true,
+          "rationale": "The challenge asks the learner to compute 0.8 * 0.8 * 0.8 with an explicit pause before revealing 51.2%, directly testing transfer of the multiplication rule."
+        }
+      }
+    }
+  }
+}
