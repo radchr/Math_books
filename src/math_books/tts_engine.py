@@ -21,6 +21,7 @@ import httpx
 from dotenv import load_dotenv
 
 from math_books.content_review import require_content_review, script_digest
+from math_books.uk_tts_providers import UkrainianFallbackTTS, build_ukrainian_providers
 from math_books.voiceover_qa import RecognitionError, model_cache, verify_clip
 
 PRIMARY_MODEL = "gemini-3.8-flash-tts"
@@ -60,15 +61,33 @@ def audio_lock(audio_dir: Path):
             fcntl.flock(lock, fcntl.LOCK_UN)
 
 
-def request_fingerprint(text: str, voice: str, index: int, *, prompt_revision: int = PROMPT_REVISION) -> str:
+def request_fingerprint(
+    text: str,
+    voice: str,
+    index: int,
+    *,
+    prompt_revision: int = PROMPT_REVISION,
+    provider: str = "gemini",
+) -> str:
+    if provider != "gemini":
+        request: dict[str, object] = {
+            "text": text,
+            "voice": voice,
+            "provider": provider,
+            "prompt_revision": prompt_revision,
+        }
+        return hashlib.sha256(json.dumps(request, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
     model = PRIMARY_MODEL if index < 3 else SECONDARY_MODEL
     alt = SECONDARY_MODEL if model == PRIMARY_MODEL else FALLBACK_MODEL
     request = {"text": text, "voice": voice, "models": [model, alt], "prompt_revision": prompt_revision}
     return hashlib.sha256(json.dumps(request, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
-def valid_request_fingerprints(text: str, voice: str, index: int) -> set[str]:
-    return {request_fingerprint(text, voice, index, prompt_revision=rev) for rev in SUPPORTED_PROMPT_REVISIONS}
+def valid_request_fingerprints(text: str, voice: str, index: int, *, provider: str = "gemini") -> set[str]:
+    return {
+        request_fingerprint(text, voice, index, prompt_revision=rev, provider=provider)
+        for rev in SUPPORTED_PROMPT_REVISIONS
+    }
 
 
 def trim_wav_edges(path: Path, *, margin_s: float = 0.1) -> None:
@@ -151,6 +170,8 @@ def generate_topic_tts(
     delay_s: float = 1.5,
     root: Path | None = None,
     trim_edges: bool = False,
+    provider: str = "gemini",
+    uk_profile: str | None = None,
 ) -> list[dict]:
     """Generate (or reuse) WAV files for all scenes of a topic and write manifest.json."""
     project_root = root or Path(__file__).resolve().parents[2]
@@ -181,10 +202,22 @@ def generate_topic_tts(
     ids = [scene["id"] for scene in scenes]
     if not ids or len(set(ids)) != len(ids) or any(not re.fullmatch(r"[A-Za-z0-9_-]+", ident) for ident in ids):
         raise ValueError("Scene IDs must be nonempty, unique file-safe names")
+    if provider not in ("gemini", "uk"):
+        raise ValueError(f"Unsupported TTS provider '{provider}'. Choose 'gemini' or 'uk'.")
     # Immutable clip paths plus the final atomic manifest switch preserve previous batches.
     with audio_lock(audio_dir), tempfile.TemporaryDirectory(dir=audio_dir) as staging:
         return _generate_batch(
-            scenes, audio_dir, Path(staging), api_key, force, voice, delay_s, trim_edges, project_root
+            scenes,
+            audio_dir,
+            Path(staging),
+            api_key,
+            force,
+            voice,
+            delay_s,
+            trim_edges,
+            project_root,
+            provider=provider,
+            uk_profile=uk_profile,
         )
 
 
@@ -197,15 +230,35 @@ def _check_clip_qa(
         raise ValueError(f"Voiceover verification failed for {scene_id}: {issues}")
 
 
-def _generate_batch(scenes, audio_dir, staging, api_key, force, voice, delay_s, trim_edges, project_root) -> list[dict]:
+def _generate_batch(
+    scenes,
+    audio_dir,
+    staging,
+    api_key,
+    force,
+    voice,
+    delay_s,
+    trim_edges,
+    project_root,
+    *,
+    provider: str = "gemini",
+    uk_profile: str | None = None,
+) -> list[dict]:
     meta: list[dict] = []
+    uk_service: UkrainianFallbackTTS | None = None
+    effective_voice = voice
+    if provider == "uk":
+        profile, uk_providers = build_ukrainian_providers(project_root, profile_id=uk_profile)
+        uk_service = UkrainianFallbackTTS(uk_providers, profile_id=profile.profile_id)
+        effective_voice = profile.profile_id
+
     for idx, scene in enumerate(scenes):
         wav_path = audio_dir / f"{scene['id']}.wav"
         cache_path = wav_path.with_suffix(".cache.json")
         model = PRIMARY_MODEL if idx < 3 else SECONDARY_MODEL
         alt = SECONDARY_MODEL if model == PRIMARY_MODEL else FALLBACK_MODEL
-        fingerprint = request_fingerprint(scene["text"], voice, idx)
-        valid_fingerprints = valid_request_fingerprints(scene["text"], voice, idx)
+        fingerprint = request_fingerprint(scene["text"], effective_voice, idx, provider=provider)
+        valid_fingerprints = valid_request_fingerprints(scene["text"], effective_voice, idx, provider=provider)
         try:
             cache = json.loads(cache_path.read_text(encoding="utf-8"))
             wav_path = audio_dir / cache.get("wav", wav_path.name)
@@ -221,6 +274,27 @@ def _generate_batch(scenes, audio_dir, staging, api_key, force, voice, delay_s, 
             already_trimmed = bool(cache.get("trimmed"))
             if not (trim_edges and not already_trimmed):
                 _check_clip_qa(wav_path, scene["text"], scene["id"], audio_dir, project_root)
+        elif provider == "uk":
+            assert uk_service is not None
+            staged_wav = staging / f"{scene['id']}.wav"
+            actual_provider_id, actual_voice = uk_service.synthesize(scene["text"], staged_wav)
+            if trim_edges:
+                trim_wav_edges(staged_wav)
+            _check_clip_qa(staged_wav, scene["text"], scene["id"], audio_dir, project_root, refresh=True)
+            dur = wav_duration(staged_wav)
+            if dur <= 0:
+                raise ValueError(f"Empty audio generated for {scene['id']}")
+            cache = {
+                "fingerprint": fingerprint,
+                "provider": "uk",
+                "model": actual_provider_id,
+                "voice": effective_voice,
+                "actual_voice": actual_voice,
+                "wav_sha256": hashlib.sha256(staged_wav.read_bytes()).hexdigest(),
+                **({"trimmed": True} if trim_edges else {}),
+            }
+            status = "generated"
+            already_trimmed = trim_edges
         else:
             if not api_key:
                 raise RuntimeError(f"GEMINI_API_KEY is required to generate uncached audio: {scene['id']}")
@@ -275,7 +349,7 @@ def _generate_batch(scenes, audio_dir, staging, api_key, force, voice, delay_s, 
                 _check_clip_qa(staged_wav, scene["text"], scene["id"], audio_dir, project_root)
             dur = wav_duration(staged_wav)
             checksum = hashlib.sha256(staged_wav.read_bytes()).hexdigest()
-            clip_fp = cache.get("fingerprint", fingerprint)
+            clip_fp = str(cache.get("fingerprint", fingerprint))
             wav_path = audio_dir / "clips" / f"{scene['id']}-{clip_fp[:12]}-{checksum[:12]}.wav"
             wav_path.parent.mkdir(exist_ok=True)
             cache.update(wav=str(wav_path.relative_to(audio_dir)), wav_sha256=checksum)

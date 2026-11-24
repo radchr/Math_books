@@ -11,8 +11,10 @@ This workspace contains tools and pipelines for:
 - **Local Voiceover QA & Russian NLP:** `faster-whisper` (`base` int8 CPU), `pymorphy3`, `num2words`, `snowballstemmer`
 - **TTS & AI APIs (`.env` — never commit or print secrets):**
   - `GEMINI_API_KEY` — Gemini TTS (`gemini-3.8-flash-tts`, `gemini-2.5-flash-preview-tts`, `gemini-3.8-flash-lite-tts`)
+  - Ukrainian multi-provider TTS fallback (`--provider uk`, `voice_profiles.toml`): `StyleTTS2` (`microgravity/styletts2-ukrainian`) → local `Piper` (`uk_UA-oleksa-high`) → `Edge TTS` (`uk-UA-OstapNeural`), with batch voice pinning and 24 kHz mono PCM WAV normalization
   - `HF-TOKEN` — Hugging Face Spaces (`gradio_client` for `opendatalab/MinerU`; note hyphenated env var name)
   - `OPENROUTER_API_KEY` — OpenRouter free vision/text models
+- **Quality Gate & CI:** `Justfile` (`just fix`, `just check`, `just test`, `just ci`), `.pre-commit-config.yaml`, `.github/workflows/ci.yml`, `ruff`, `ty` (Astral type checker), `unittest` + `hypothesis` property-based tests.
 
 ## Project Structure
 - `src/math_books/`
@@ -21,7 +23,8 @@ This workspace contains tools and pipelines for:
   - `voiceover_qa.py` & `spoken_text.py` — Local `faster-whisper` ASR verification gate, Russian number/morphology normalizer, and version-bound QA receipts (`audio/qa/`)
   - `lesson_math.py` — Exact mathematical example helpers shared between scenes, tests, and review checks
   - `video_ui.py` — Shared `9:16` Manim config, theme constants, `VerticalShortScene` (`run_segment`, `_pad`, `word_timestamp`, `check_frame_bounds`), and reusable UI helpers (`make_badge`, `make_subtitle`, `make_caption`, `make_basketball`, `make_half_court`, `make_scoreboard`, `make_stat_card`)
-  - `tts_engine.py` — Shared Gemini TTS helper (`synthesize_gemini_tts`, `generate_topic_tts`) with automatic model rotation, immutable clips (`audio/clips/`), edge trimming, local ASR verification & `manifest.json` generation
+  - `tts_engine.py` — Shared TTS helper (`synthesize_gemini_tts`, `generate_topic_tts`) with Gemini model rotation, `--provider uk` multi-provider Ukrainian fallback, immutable clips (`audio/clips/`), edge trimming, local ASR verification & `manifest.json` generation
+  - `uk_tts_providers.py` & `voice_profiles.toml` — Ukrainian TTS fallback chain (`StyleTTS2` → `Piper` → `Edge TTS`), batch voice pinning, and 24 kHz mono PCM WAV normalization
   - `video_builder.py` — Automated silent Manim render, lossless stdlib `wave` concatenation, `ffmpeg` muxing (`-movflags +faststart`), `ffprobe` + provenance verification, and preview frame extraction
   - `generate_tts.py` / `basketball_triangles_scene.py` — Triangles in basketball video (`basketball`)
   - `generate_ahrens_tts.py` / `ahrens_basketball_scene.py` — Ahrens 1924 "Race to 100" adapted to 21-point basketball duel (`ahrens`)

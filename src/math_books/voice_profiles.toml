@@ -1,0 +1,36 @@
+default_profile = "tyshyn"
+
+[profiles.tyshyn]
+display_name = "Михайло Тишин"
+language = "uk"
+providers = [
+    "styletts2_tyshyn",
+    "styletts2_kudryavets",
+    "piper_oleksa",
+    "edge_ostap",
+]
+
+[providers.styletts2_tyshyn]
+kind = "styletts2"
+voice = "Михайло Тишин"
+space = "microgravity/styletts2-ukrainian"
+api_name = "/synthesize_multi"
+speed = 1.0
+
+[providers.styletts2_kudryavets]
+kind = "styletts2"
+voice = "Юрій Кудрявець"
+space = "microgravity/styletts2-ukrainian"
+api_name = "/synthesize_multi"
+speed = 1.0
+
+[providers.piper_oleksa]
+kind = "piper"
+voice = "uk_UA-oleksa-high"
+model_path = "models/piper/Oleksa.onnx"
+config_path = "models/piper/Oleksa.onnx.json"
+
+[providers.edge_ostap]
+kind = "edge"
+voice = "uk-UA-OstapNeural"
+rate = "+0%"

@@ -85,7 +85,8 @@ def _text(value: object, name: str) -> None:
 
 
 def _strings(value: object, name: str, *, allow_empty: bool = False) -> None:
-    _require(isinstance(value, list), f"{name}: expected a list")
+    if not isinstance(value, list):
+        raise ValueError(f"{name}: expected a list")
     _require(allow_empty or bool(value), f"{name}: must not be empty")
     for item in value:
         _text(item, name)
@@ -201,10 +202,12 @@ def _math_check(check: dict) -> dict:
 
 
 def _index(items: object, name: str, *, key: str = "id") -> dict[str, dict]:
-    _require(isinstance(items, list), f"{name}: expected a list")
+    if not isinstance(items, list):
+        raise ValueError(f"{name}: expected a list")
     indexed = {}
     for item in items:
-        _require(isinstance(item, dict), f"{name}: entries must be objects")
+        if not isinstance(item, dict):
+            raise ValueError(f"{name}: entries must be objects")
         ident = item.get(key)
         _text(ident, f"{name}.{key}")
         _require(ident not in indexed, f"{name}: duplicate {key} {ident}")
@@ -224,6 +227,8 @@ def _validate(dossier: dict, scenes, topic, root, expected_scene_file):
     scene_file = dossier.get("scene_file")
     if expected_scene_file is not None:
         _require(scene_file == expected_scene_file, "Reviewed scene_file does not match the topic renderer")
+    if not isinstance(scene_file, str):
+        raise ValueError("scene_file: provide substantive text")
     _require(
         dossier.get("scene_sha256") == hashlib.sha256(_scene_path(root, scene_file).read_bytes()).hexdigest(),
         "Scene visuals changed; review the current scene",
@@ -237,7 +242,8 @@ def _validate(dossier: dict, scenes, topic, root, expected_scene_file):
     }
     _require(supporting == expected, "Supporting math/UI source changed; repeat editorial review")
     pedagogy = dossier.get("pedagogy")
-    _require(isinstance(pedagogy, dict), "pedagogy: expected an object")
+    if not isinstance(pedagogy, dict):
+        raise ValueError("pedagogy: expected an object")
     _require(
         type(pedagogy.get("audience_age")) is int and pedagogy["audience_age"] == 12,
         "pedagogy.audience_age: this project's target learner is 12",
@@ -261,7 +267,8 @@ def _validate(dossier: dict, scenes, topic, root, expected_scene_file):
     for scene_id, entry in coverage.items():
         _text(entry.get("teaching_role"), f"{scene_id}.teaching_role")
         claims = entry.get("claims")
-        _require(isinstance(claims, list) and bool(claims), f"{scene_id}: claims must not be empty")
+        if not isinstance(claims, list) or not claims:
+            raise ValueError(f"{scene_id}: claims must not be empty")
         for claim in claims:
             _require(isinstance(claim, dict), f"{scene_id}: claim must be an object")
             for field in ("statement", "reasoning", "script_quote"):
@@ -282,7 +289,8 @@ def _validate(dossier: dict, scenes, topic, root, expected_scene_file):
                 _text(claim.get("proof"), f"{scene_id}: mathematical claim requires a check or explicit proof")
     _require(dossier.get("unresolved_issues") == [], "Resolve all editorial issues before production")
     reviews = dossier.get("reviews")
-    _require(isinstance(reviews, dict), "reviews: expected scientific and pedagogical review objects")
+    if not isinstance(reviews, dict):
+        raise ValueError("reviews: expected scientific and pedagogical review objects")
     for discipline, criteria in REVIEW_CRITERIA.items():
         review = reviews.get(discipline)
         _require(isinstance(review, dict), f"Missing {discipline} review")

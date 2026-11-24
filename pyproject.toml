@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "edge-tts>=7.2.8",
     "gradio-client>=2.7.2",
     "faster-whisper>=1.2.1",
     "httpx>=0.28.1",
@@ -28,15 +29,46 @@ math-books = "math_books.cli:main"
 
 [dependency-groups]
 dev = [
+    "hypothesis>=6.0",
+    "pre-commit>=4.0",
     "ruff>=0.11.0",
+    "ty>=0.0.1a0",
 ]
 
 [tool.ruff]
 target-version = "py313"
 line-length = 120
+extend-exclude = [".agents", "archive_*"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
+
+[tool.ty.environment]
+python-version = "3.13"
+
+[tool.ty.src]
+include = ["src", "tests"]
+
+[[tool.ty.overrides]]
+include = ["src/math_books/*_scene.py", "src/math_books/video_ui.py"]
+[tool.ty.overrides.rules]
+# Manim's Point3DLike / ManimColor stubs reject standard list[float] coordinates and color defaults
+invalid-argument-type = "ignore"
+invalid-parameter-default = "ignore"
+not-iterable = "ignore"
+
+[[tool.ty.overrides]]
+include = ["src/math_books/voiceover_qa.py"]
+[tool.ty.overrides.rules]
+# Preserves exact voiceover_qa.py hash for existing verified QA receipts
+missing-union-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["tests/**"]
+[tool.ty.overrides.rules]
+# Tests intentionally pass SimpleNamespace stubs and dynamic dicts
+invalid-argument-type = "ignore"
+no-matching-overload = "ignore"
 
 [build-system]
 requires = ["uv_build>=0.13.9,<0.14.0"]

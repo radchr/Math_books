@@ -42,7 +42,14 @@ def cmd_tts(args: argparse.Namespace) -> int:
     topic = VIDEO_TOPICS[args.topic]
     mod = importlib.import_module(topic.tts_module)
     require_content_review(mod.SCENES, topic.video_dir, project_root(), expected_scene_file=topic.scene_file)
-    generate_topic_tts(mod.SCENES, topic.video_dir, force=args.force, trim_edges=args.trim_edges)
+    generate_topic_tts(
+        mod.SCENES,
+        topic.video_dir,
+        force=args.force,
+        trim_edges=args.trim_edges,
+        provider=args.provider,
+        uk_profile=args.uk_profile,
+    )
     return 0
 
 
@@ -147,10 +154,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_review.set_defaults(func=cmd_review)
 
-    p_tts = sub.add_parser("tts", help="Generate Gemini TTS audio clips and manifest.json")
+    p_tts = sub.add_parser("tts", help="Generate TTS audio clips and manifest.json (Gemini or Ukrainian fallback)")
     p_tts.add_argument("topic", choices=sorted(VIDEO_TOPICS.keys()))
     p_tts.add_argument("--force", action="store_true", help="Regenerate existing WAV files")
     p_tts.add_argument("--trim-edges", action="store_true", help="Trim leading/trailing silence (reuses valid audio)")
+    p_tts.add_argument(
+        "--provider",
+        choices=("gemini", "uk"),
+        default="gemini",
+        help="TTS backend: 'gemini' (default) or 'uk' (StyleTTS2 -> Piper -> Edge TTS)",
+    )
+    p_tts.add_argument("--uk-profile", default=None, help="Profile name in voice_profiles.toml when --provider uk")
     p_tts.set_defaults(func=cmd_tts)
 
     p_build = sub.add_parser("build", help="Render silent Manim video, concat audio, mux, and verify")

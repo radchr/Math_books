@@ -113,7 +113,8 @@ def validate_topic_audio(topic: VideoTopic, base: Path) -> list[dict]:
     for index, item in enumerate(manifest):
         if not all(key in item for key in ("fingerprint", "wav_sha256", "model", "voice")):
             raise ValueError(f"Untrusted legacy audio for {topic.key}; regenerate with math-books tts {topic.key}")
-        if item["fingerprint"] not in valid_request_fingerprints(item["text"], item["voice"], index):
+        provider = item.get("provider", "gemini")
+        if item["fingerprint"] not in valid_request_fingerprints(item["text"], item["voice"], index, provider=provider):
             raise ValueError(f"Stale audio provenance for {item['id']}; regenerate TTS")
         wav = path.parent / item["wav"]
         duration = float(item["duration"])
@@ -148,7 +149,10 @@ def verify_topic_audio(topic: VideoTopic, base: Path, *, refresh: bool = False) 
                     raise ValueError(
                         f"Untrusted legacy audio for {topic.key}; regenerate with math-books tts {topic.key}"
                     )
-                if item["fingerprint"] not in valid_request_fingerprints(item["text"], item["voice"], index):
+                provider = item.get("provider", "gemini")
+                if item["fingerprint"] not in valid_request_fingerprints(
+                    item["text"], item["voice"], index, provider=provider
+                ):
                     raise ValueError(f"Stale audio provenance for {item['id']}; regenerate TTS")
                 wav = path.parent / item["wav"]
                 duration = float(item["duration"])
@@ -402,7 +406,7 @@ def verify_video(mp4_path: Path, *, check_silence: bool = True) -> dict:
     v_dur = duration(v_stream, "video")
     a_dur = duration(a_stream, "audio")
     try:
-        fps = float(Fraction(v_stream["avg_frame_rate"]))
+        fps = float(Fraction(v_stream["avg_frame_rate"])) if v_stream else 0.0
     except (TypeError, KeyError, ValueError, ZeroDivisionError):
         fps = 0.0
     if abs(fps - 30) > 0.01:

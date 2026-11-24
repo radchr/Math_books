@@ -35,6 +35,9 @@ uv run math-books review moneybart
 # Generate TTS audio (reuses only clips with matching provenance and checksum)
 uv run math-books tts moneybart
 
+# Generate Ukrainian TTS via multi-provider fallback (StyleTTS2 -> Piper -> Edge TTS)
+uv run math-books tts buzzer --provider uk --uk-profile tyshyn
+
 # Remove leading/trailing pauses from trusted clips, preserving internal pauses
 uv run math-books tts hothand --trim-edges
 
@@ -104,18 +107,21 @@ and later draft generation from a topic prompt. These features are planned, not 
 ## Development
 
 ```bash
-# Lint & format check
-uv run ruff check src tests
+# Full quality gate (or `just ci` if just is installed)
 uv run ruff format --check src tests
-
-# Run unit tests
+uv run ruff check src tests
+uv run ty check
 uv run python -m unittest discover -s tests -v
+uv lock --check
 ```
+
+Pre-commit hooks (`.pre-commit-config.yaml`) and GitHub Actions CI (`.github/workflows/ci.yml`) enforce `ruff`, `ty`, and `unittest` (including `hypothesis` property-based tests).
 
 ## Project Structure
 
 - `src/math_books/video_ui.py` — Shared `9:16` Manim canvas config, color palette, and UI components (`make_badge`, `make_subtitle`, `make_caption`, `make_basketball`, `make_half_court`, `VerticalShortScene`).
-- `src/math_books/tts_engine.py` — Shared Gemini TTS synthesizer with automatic model rotation/fallback and `manifest.json` generation.
+- `src/math_books/tts_engine.py` — Shared TTS synthesizer supporting Gemini (`--provider gemini`, default) and multi-provider Ukrainian fallback (`--provider uk`) with provenance tracking and `manifest.json` generation.
+- `src/math_books/uk_tts_providers.py` & `src/math_books/voice_profiles.toml` — Multi-provider Ukrainian TTS fallback chain (`StyleTTS2` → local `Piper` → `Edge TTS`) with per-batch voice pinning and 24 kHz mono 16-bit PCM WAV normalization.
 - `src/math_books/video_builder.py` — End-to-end build, stdlib WAV assembly, `ffmpeg` muxing, and media/provenance verification.
 - `src/math_books/cli.py` — Unified `math-books` CLI entry point.
 - `src/math_books/*_scene.py` & `generate_*_tts.py` — Individual STEM-Basketball video scenes and scripts.
