@@ -153,7 +153,7 @@
       "reviewer_type": "ai",
       "reviewed_at": "2026-11-24",
       "verdict": "approved",
-      "dossier_sha256": "a9198a3b5bcd3956755f52199cb3d16df2114e53baf3c7d68904b265758b51c0",
+      "dossier_sha256": "e76c5d5be7822485c035bee1c149d989e731bf45f28c0fcbfcdcbe7572d4620e",
       "criteria": {
         "evidence_matches_claims": {
           "passed": true,
@@ -178,7 +178,7 @@
       "reviewer_type": "ai",
       "reviewed_at": "2026-11-24",
       "verdict": "approved",
-      "dossier_sha256": "a9198a3b5bcd3956755f52199cb3d16df2114e53baf3c7d68904b265758b51c0",
+      "dossier_sha256": "e76c5d5be7822485c035bee1c149d989e731bf45f28c0fcbfcdcbe7572d4620e",
       "criteria": {
         "age_and_prerequisites": {
           "passed": true,
@@ -201,6 +201,6 @@
   },
   "supporting_files": {
     "src/math_books/lesson_math.py": "62de0619be031ffecf608750e1311166a9300eb3ca1834544fb276e1d1a39209",
-    "src/math_books/video_ui.py": "6d62aa0d63ade4828c42c88363292522facf41f59ecb33b355e3ef6237bbc9e3"
+    "src/math_books/video_ui.py": "dc8e159ec379ca101dc79198949c0e6827f3dbda4dd81ebfb41625337a674aae"
   }
 }

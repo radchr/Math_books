@@ -335,6 +335,7 @@ class BuzzerBeaterBasketball(VerticalShortScene):
         self.play(FadeIn(badge), FadeIn(title), FadeIn(balls), run_time=1.1)
         self.play(FadeIn(question), FadeIn(hint), FadeIn(caption), run_time=1.4)
         elapsed = self.renderer.time - self._segment_start
-        self.wait(max(0, duration * 0.68 - elapsed))
+        reveal_at = self.word_timestamp("05_challenge", "да", fallback=duration * 0.68, after_s=elapsed + 0.5)
+        self.wait(max(0.0, float(reveal_at) - elapsed))
         self.play(Write(answer), run_time=1.0)
         self.finish(duration, last=True)

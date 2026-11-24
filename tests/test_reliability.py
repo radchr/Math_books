@@ -560,6 +560,73 @@ class TestMeasuredTiming(unittest.TestCase):
                 durations = scene._load_durations("video_buzzer")
             self.assertEqual(durations["01_hook"], 10.0)
 
+    def test_word_timestamp_reads_asr_receipt_and_falls_back_cleanly(self):
+        from math_books.video_ui import VerticalShortScene
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            audio_dir = root / "videos" / "video_buzzer" / "audio"
+            qa_dir = audio_dir / "qa"
+            qa_dir.mkdir(parents=True)
+            text = "Сначала посчитай. Пауза! Да, пятьдесят один процент."
+            wav_sha = "a" * 64
+            text_sha = hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+            manifest_path = audio_dir / "manifest.json"
+            manifest_path.write_text(
+                json.dumps(
+                    [{"id": "05_challenge", "text": text, "wav": "05.wav", "wav_sha256": wav_sha, "duration": 18.0}]
+                )
+            )
+            receipt_path = qa_dir / f"{wav_sha}-{text_sha}-policy1234567890.json"
+            receipt_path.write_text(
+                json.dumps(
+                    {
+                        "segments": [
+                            {
+                                "start": 0.0,
+                                "end": 18.0,
+                                "text": text,
+                                "words": [
+                                    {"start": 0.5, "end": 1.2, "word": " Сначала"},
+                                    {"start": 10.2, "end": 11.0, "word": " Пауза!"},
+                                    {"start": 14.78, "end": 15.24, "word": " Да,"},
+                                ],
+                            }
+                        ]
+                    }
+                )
+            )
+            scene = VerticalShortScene.__new__(VerticalShortScene)
+            with patch.dict("os.environ", {"MATH_BOOKS_MANIFEST_PATH": str(manifest_path)}):
+                scene._load_durations("video_buzzer")
+            self.assertAlmostEqual(scene.word_timestamp("05_challenge", "да", fallback=12.0, after_s=3.0), 14.78)
+            self.assertAlmostEqual(scene.word_timestamp("05_challenge", "пауза", fallback=12.0), 10.2)
+            self.assertAlmostEqual(scene.word_timestamp("05_challenge", "несуществующее", fallback=12.34), 12.34)
+
+    def test_check_frame_bounds_rejects_horizontal_and_vertical_overflow(self):
+        from manim import RIGHT, UP, Rectangle
+
+        from math_books.video_ui import VerticalShortScene
+
+        scene = VerticalShortScene.__new__(VerticalShortScene)
+        scene.mobjects = [Rectangle(width=6.0, height=4.0)]
+        scene.check_frame_bounds()
+
+        wide = Rectangle(width=9.2, height=2.0)
+        scene.mobjects = [wide]
+        with self.assertRaisesRegex(ValueError, "horizontal 9:16 safe bounds"):
+            scene.check_frame_bounds()
+
+        low = Rectangle(width=4.0, height=2.0).move_to(UP * -6.5)
+        scene.mobjects = [low]
+        with self.assertRaisesRegex(ValueError, "vertical 9:16 safe bounds"):
+            scene.check_frame_bounds()
+
+        shifted = Rectangle(width=3.0, height=2.0).move_to(RIGHT * 3.5)
+        scene.mobjects = [shifted]
+        with self.assertRaisesRegex(ValueError, "horizontal 9:16 safe bounds"):
+            scene.check_frame_bounds()
+
     def test_overrun_is_rejected(self):
         from math_books.video_ui import VerticalShortScene
 

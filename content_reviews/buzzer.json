@@ -3,10 +3,10 @@
   "topic": "buzzer",
   "script_sha256": "951b378cecd763aef44ceeb173dc886e87c739d0586c3f2829f4fb03541cccac",
   "scene_file": "src/math_books/buzzer_scene.py",
-  "scene_sha256": "a6e5781c213b99f4c9ab6cbe4477122e682f59d6729a30da61bbd81d2a09b0a2",
+  "scene_sha256": "1090ca8f32f419920d4d0430605ebdf3a065e2cc8e5463695f9aa232b288bdda",
   "supporting_files": {
     "src/math_books/lesson_math.py": "62de0619be031ffecf608750e1311166a9300eb3ca1834544fb276e1d1a39209",
-    "src/math_books/video_ui.py": "6d62aa0d63ade4828c42c88363292522facf41f59ecb33b355e3ef6237bbc9e3"
+    "src/math_books/video_ui.py": "dc8e159ec379ca101dc79198949c0e6827f3dbda4dd81ebfb41625337a674aae"
   },
   "pedagogy": {
     "audience_age": 12,
@@ -139,7 +139,7 @@
       "reviewer_type": "ai",
       "reviewed_at": "2026-11-24",
       "verdict": "approved",
-      "dossier_sha256": "728d668222f44ffde11e65ebe4e84a2213506a7b83f1bb9100181d36acff711a",
+      "dossier_sha256": "917390f44c4c5a7b35bb72f034613f321e85d15f41a327160a76f94fb84af87f",
       "criteria": {
         "evidence_matches_claims": {
           "passed": true,
@@ -164,7 +164,7 @@
       "reviewer_type": "ai",
       "reviewed_at": "2026-11-24",
       "verdict": "approved",
-      "dossier_sha256": "728d668222f44ffde11e65ebe4e84a2213506a7b83f1bb9100181d36acff711a",
+      "dossier_sha256": "917390f44c4c5a7b35bb72f034613f321e85d15f41a327160a76f94fb84af87f",
       "criteria": {
         "age_and_prerequisites": {
           "passed": true,

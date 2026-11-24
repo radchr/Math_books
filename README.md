@@ -72,8 +72,13 @@ Neither `--force`, `--skip-render` nor an audio cache hit bypasses review.
   repeated takes or scientific accuracy. Do not edit immutable clips in place.
 - `build` rejects stale scripts, altered/truncated WAVs and untrusted legacy audio before rendering.
   Run `tts <topic>` to migrate a legacy topic; this needs Gemini quota.
-- Scene padding measures renderer time and rejects animation overruns. A silent render's
-  `.render.json` binds the scene, shared UI, example data, durations and silent MP4 checksum.
+- Scene padding measures renderer time and rejects animation overruns. `VerticalShortScene._pad()`
+  also runs `check_frame_bounds()` automatically on every scene to reject any Mobject overflowing
+  the 9:16 safe area (`|x| <= 4.35`, `y in [-6.15, +7.45]`).
+- `VerticalShortScene.word_timestamp(scene_id, target_word, fallback=..., after_s=...)` reads exact
+  per-word timestamps from local `faster-whisper` QA receipts (`audio/qa/*.json`) so visual reveals
+  (such as challenge answers) synchronize to the exact millisecond the narrator speaks the word.
+- A silent render's `.render.json` binds the scene, shared UI, example data, durations and silent MP4 checksum.
   `--skip-render` requires an exact match: changed audio duration requires a fresh render.
 - A final `.build.json` binds source, audio and final MP4 checksums. `verify` rejects missing/stale
   provenance, invalid durations, non-30-fps output, long pauses and silence-detector failures.
@@ -89,6 +94,12 @@ subset. An explicit order such as `--source-pages 14,13` is preserved. Missing p
 ambiguous HTML pages and invalid crop bounds raise errors instead of silently dropping content.
 
 Scientific assumptions and reviewed examples: [content review](docs/content-review.md).
+
+## Future work
+
+[Multilingual video and new-topic roadmap](docs/superpowers/plans/2026-11-24-multilingual-and-general-topics.md)
+tracks Ukrainian/English narration and on-screen text, reusable lessons beyond math and basketball,
+and later draft generation from a topic prompt. These features are planned, not implemented.
 
 ## Development
 

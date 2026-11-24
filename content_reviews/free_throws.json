@@ -3,10 +3,10 @@
   "topic": "free_throws",
   "script_sha256": "f0564e00296bc0cb6095109065b1d78e1bb16db3d4944db094e25a09fe1d96a8",
   "scene_file": "src/math_books/free_throws_scene.py",
-  "scene_sha256": "cf9f6c53f1a6ef1cb6fe5df3bd571dd8b341381d884478942a9885e58934bade",
+  "scene_sha256": "d93a76f0be59110c7decced91dcb9de46bc74c6e78b6399012b4c5ea6ff504e0",
   "supporting_files": {
     "src/math_books/lesson_math.py": "62de0619be031ffecf608750e1311166a9300eb3ca1834544fb276e1d1a39209",
-    "src/math_books/video_ui.py": "6d62aa0d63ade4828c42c88363292522facf41f59ecb33b355e3ef6237bbc9e3"
+    "src/math_books/video_ui.py": "dc8e159ec379ca101dc79198949c0e6827f3dbda4dd81ebfb41625337a674aae"
   },
   "pedagogy": {
     "audience_age": 12,
@@ -200,7 +200,7 @@
       "reviewer_type": "ai",
       "reviewed_at": "2026-11-24",
       "verdict": "approved",
-      "dossier_sha256": "e41885a1a1c53644a696c998828126f511c3823a41e2613c123c9c17ecb6a47b",
+      "dossier_sha256": "aae51822cd649fc14a621e885045fb4255d13852fb9407945e97db2733336def",
       "scope": "Preproduction narration, scene code, probability data and teaching design; playback and pronunciation require separate production QA.",
       "criteria": {
         "evidence_matches_claims": {
@@ -226,7 +226,7 @@
       "reviewer_type": "ai",
       "reviewed_at": "2026-11-24",
       "verdict": "approved",
-      "dossier_sha256": "e41885a1a1c53644a696c998828126f511c3823a41e2613c123c9c17ecb6a47b",
+      "dossier_sha256": "aae51822cd649fc14a621e885045fb4255d13852fb9407945e97db2733336def",
       "scope": "Preproduction narration, scene code, probability data and teaching design; playback and pronunciation require separate production QA.",
       "criteria": {
         "age_and_prerequisites": {

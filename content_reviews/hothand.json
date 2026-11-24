@@ -151,7 +151,7 @@
       "reviewer_type": "ai",
       "reviewed_at": "2026-11-24",
       "verdict": "approved",
-      "dossier_sha256": "e881bc6503bc80728c8a7e39ded9877049b67721e98ed0fe533a76e82ef27930",
+      "dossier_sha256": "d2eea5479d9d9fa511daefa9c9a3a88d4371f1b1671c9575ba40c738c453a605",
       "scope": "Current lesson source, evidence, mathematics and teaching design only; no new playback, timing or pronunciation approval.",
       "criteria": {
         "evidence_matches_claims": {
@@ -177,7 +177,7 @@
       "reviewer_type": "ai",
       "reviewed_at": "2026-11-24",
       "verdict": "approved",
-      "dossier_sha256": "e881bc6503bc80728c8a7e39ded9877049b67721e98ed0fe533a76e82ef27930",
+      "dossier_sha256": "d2eea5479d9d9fa511daefa9c9a3a88d4371f1b1671c9575ba40c738c453a605",
       "scope": "Current lesson source, evidence, mathematics and teaching design only; no new playback, timing or pronunciation approval.",
       "criteria": {
         "age_and_prerequisites": {
@@ -201,6 +201,6 @@
   },
   "supporting_files": {
     "src/math_books/lesson_math.py": "62de0619be031ffecf608750e1311166a9300eb3ca1834544fb276e1d1a39209",
-    "src/math_books/video_ui.py": "6d62aa0d63ade4828c42c88363292522facf41f59ecb33b355e3ef6237bbc9e3"
+    "src/math_books/video_ui.py": "dc8e159ec379ca101dc79198949c0e6827f3dbda4dd81ebfb41625337a674aae"
   }
 }

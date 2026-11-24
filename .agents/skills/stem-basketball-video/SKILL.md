@@ -61,9 +61,10 @@ Create 55–70 second vertical (`1080×1920`, `30 fps`) popular-science videos c
    - **Critical Manim & Sync Invariants:**
      - **NEVER use `self.add_sound()`** inside `Scene` — Manim's partial-movie caching drops audio on subsequent scenes. Always render silent video and mux in Step 4.
      - **NEVER put Cyrillic inside `MathTex()`** — default `latex` fails on Cyrillic. Use `Text(..., font=FONT)` for Russian labels and `MathTex()` strictly for numbers/Latin/Greek symbols.
-     - **Authoritative Timing & Transitions:**
+     - **Authoritative Timing, Word-Level Bookmarks & Transitions:**
        - Run each scene via `self.run_segment(self.scene_fn, durations[key])`.
-       - Inside each scene method, call `self._pad(duration)` before the exit transition (`_pad` measures actual `self.renderer.time - self._segment_start` and raises `ValueError` if animations overrun narration).
+       - For intra-scene reveals (e.g., revealing a challenge answer right when the narrator says `"Ответ"` or `"Да"`), query the exact spoken word timestamp from the cached local ASR receipt via `self.word_timestamp(scene_id, "ответ", fallback=duration * 0.7, after_s=elapsed + 0.5)`.
+       - Inside each scene method, call `self._pad(duration)` before the exit transition (`_pad` automatically verifies `self.check_frame_bounds()` so no Mobject overflows `|x| <= 4.35` or `y in [-6.15, +7.45]`, and measures actual `self.renderer.time - self._segment_start`, raising `ValueError` if animations overrun narration).
        - End scenes 1–4 with **`self.play(FadeOut(Group(*self.mobjects)), run_time=0.4)`** (use `Group`, never `VGroup`, to safely handle all Mobject types; `0.4s` matches the `400 ms` inter-scene audio gap).
        - End scene 5 with **`self.wait(0.3)`** (matches the `300 ms` tail silence).
 

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import re
 from pathlib import Path
 
 import numpy as np
@@ -190,26 +192,106 @@ def make_stat_card(
 class VerticalShortScene(Scene):
     """Base Manim Scene for silent 9:16 vertical shorts synced via audio manifest."""
 
-    def _load_durations(self, video_dir_name: str) -> dict[str, float]:
+    SAFE_MAX_ABS_X = 4.35
+    SAFE_MIN_Y = -6.15
+    SAFE_MAX_Y = 7.45
+
+    def _resolve_manifest_path(self, video_dir_name: str) -> Path:
         override = os.environ.get("MATH_BOOKS_MANIFEST_PATH")
         if override:
-            manifest_path = Path(override)
-        else:
-            root = Path(__file__).resolve().parents[2]
-            from math_books.video_builder import VIDEO_TOPICS
+            return Path(override)
+        root = Path(__file__).resolve().parents[2]
+        from math_books.video_builder import VIDEO_TOPICS
 
-            topic = next(
-                (
-                    item
-                    for item in VIDEO_TOPICS.values()
-                    if item.video_dir == video_dir_name or Path(item.video_dir).name == Path(video_dir_name).name
-                ),
-                None,
-            )
-            rel_dir = topic.video_dir if topic is not None else video_dir_name
-            manifest_path = root / rel_dir / "audio" / "manifest.json"
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        topic = next(
+            (
+                item
+                for item in VIDEO_TOPICS.values()
+                if item.video_dir == video_dir_name or Path(item.video_dir).name == Path(video_dir_name).name
+            ),
+            None,
+        )
+        rel_dir = topic.video_dir if topic is not None else video_dir_name
+        return root / rel_dir / "audio" / "manifest.json"
+
+    def _load_durations(self, video_dir_name: str) -> dict[str, float]:
+        self._manifest_path = self._resolve_manifest_path(video_dir_name)
+        manifest = json.loads(self._manifest_path.read_text(encoding="utf-8"))
+        self._manifest_items = {item["id"]: item for item in manifest}
         return {item["id"]: float(item["duration"]) for item in manifest}
+
+    def word_timestamp(
+        self,
+        scene_id: str,
+        target_word: str,
+        *,
+        fallback: float | None = None,
+        after_s: float = 0.0,
+    ) -> float | None:
+        """Look up the spoken start timestamp (in seconds) of `target_word` from the cached ASR QA receipt."""
+        manifest_path = getattr(self, "_manifest_path", None)
+        items = getattr(self, "_manifest_items", None)
+        if manifest_path is None or not items or scene_id not in items:
+            return fallback
+        item = items[scene_id]
+        qa_dir = manifest_path.parent / "qa"
+        if not qa_dir.is_dir():
+            return fallback
+        wav_sha = item.get("wav_sha256")
+        if not wav_sha:
+            wav_file = manifest_path.parent / item["wav"]
+            if not wav_file.is_file():
+                return fallback
+            wav_sha = hashlib.sha256(wav_file.read_bytes()).hexdigest()
+        text_sha_prefix = hashlib.sha256(item.get("text", "").encode("utf-8")).hexdigest()[:16]
+        candidates = sorted(
+            qa_dir.glob(f"{wav_sha}-{text_sha_prefix}-*.json"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        if not candidates:
+            return fallback
+        try:
+            receipt = json.loads(candidates[0].read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return fallback
+        norm_target = re.sub(r"[^а-яa-z0-9]+", "", target_word.lower().replace("ё", "е"))
+        if not norm_target:
+            return fallback
+        for segment in receipt.get("segments", []):
+            for word_obj in segment.get("words", []):
+                raw_w = str(word_obj.get("word", "")).lower().replace("ё", "е")
+                clean_w = re.sub(r"[^а-яa-z0-9]+", "", raw_w)
+                start_t = float(word_obj.get("start", 0.0))
+                if start_t >= after_s and (clean_w == norm_target or clean_w.startswith(norm_target)):
+                    return start_t
+        return fallback
+
+    def check_frame_bounds(
+        self,
+        *,
+        max_abs_x: float = SAFE_MAX_ABS_X,
+        min_y: float = SAFE_MIN_Y,
+        max_y: float = SAFE_MAX_Y,
+    ) -> None:
+        """Verify that all on-screen mobjects fit within the 9:16 vertical safe area."""
+        for mob in getattr(self, "mobjects", []):
+            if getattr(mob, "width", 0) <= 0 or getattr(mob, "height", 0) <= 0:
+                continue
+            left_x = float(mob.get_left()[0])
+            right_x = float(mob.get_right()[0])
+            bottom_y = float(mob.get_bottom()[1])
+            top_y = float(mob.get_top()[1])
+            if left_x < -max_abs_x or right_x > max_abs_x:
+                raise ValueError(
+                    f"Mobject {mob!r} exceeds horizontal 9:16 safe bounds "
+                    f"[{left_x:.2f}, {right_x:.2f}] vs ±{max_abs_x:.2f}"
+                )
+            if bottom_y < min_y or top_y > max_y:
+                raise ValueError(
+                    f"Mobject {mob!r} exceeds vertical 9:16 safe bounds "
+                    f"[{bottom_y:.2f}, {top_y:.2f}] vs [{min_y:.2f}, {max_y:.2f}]"
+                )
 
     def run_segment(self, segment, duration: float) -> None:
         self._segment_start = self.renderer.time
@@ -217,6 +299,7 @@ class VerticalShortScene(Scene):
 
     def _pad(self, target_dur: float, spent: float | None = None) -> None:
         # `spent` is accepted for existing scenes, but actual renderer time is authoritative.
+        VerticalShortScene.check_frame_bounds(self)
         elapsed = self.renderer.time - self._segment_start
         rem = target_dur - elapsed
         if rem < -1 / 30:
