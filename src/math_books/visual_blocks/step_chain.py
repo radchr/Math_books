@@ -71,15 +71,15 @@ def build(theme: VisualTheme, language: str, row: Mapping[str, Any]) -> dict[str
             stroke_width=2.5,
         ).move_to(UP * y)
         lbl = Text(localized_label(row, step["label"]), font=theme.font, font_size=26, color=theme.text_primary)
-        max_lbl_w = 4.6 if step.get("value") else 6.4
+        max_lbl_w = 4.15 if step.get("value") else 6.4
         if lbl.width > max_lbl_w:
             lbl.scale_to_fit_width(max_lbl_w)
         if step.get("value"):
-            lbl.move_to(box.get_left() + RIGHT * (0.45 + lbl.width / 2))
+            lbl.move_to(box.get_left() + RIGHT * (0.4 + lbl.width / 2))
             val = Text(step["value"], font=theme.font, font_size=30, weight="BOLD", color=theme.secondary)
-            if val.width > 1.8:
-                val.scale_to_fit_width(1.8)
-            val.move_to(box.get_right() + LEFT * (0.45 + val.width / 2))
+            if val.width > 1.75:
+                val.scale_to_fit_width(1.75)
+            val.move_to(box.get_right() + LEFT * (0.4 + val.width / 2))
             step_parts = [box, lbl, val]
         else:
             lbl.move_to(box.get_center())
