@@ -65,8 +65,8 @@ description: >-
   - Не вставляй теги на кшталт `[pause 0.5s]` у фінальний масив `SCENES` для TTS (тримай паузи лише в нотатках розкадровки).
 - **Сумісність із нашим Manim-пайплайном:**
   - Шрифт тексту: `FONT` (`DejaVu Sans` із `video_ui.py`), **ніколи** не передавай кирилицю в `MathTex()`.
-  - Полотно: `1080×1920`, безпечна зона `|x| <= 4.35`, `y ∈ [-6.15, +7.45]`, ширина тексту `≤ 7.6`.
-  - Числа озвучки й екрана мають спиратися на спільну перевірювану модель; для раціональної арифметики використовуй `fractions.Fraction`, для фізики — перевірені одиниці й точність чисельного методу.
+  - Полотно: `1080×1920`, безпечна зона `|x| <= 4.35`, `y ∈ [-6.15, +7.45]`, ширина тексту `≤ 7.6`; декларативні сцени додатково проходять автоматичну перевірку перетинів `require_no_mobject_overlaps()` і стрес-тест верстки `tests/test_visual_layout_stress.py`.
+  - Числа озвучки й екрана мають спиратися на спільну перевірювану модель; для раціональної арифметики використовуй `fractions.Fraction`, для рівнянь, алгебри й фізичних формул — `SymPy`-чеки (`sympy_identity`, `sympy_solve`, `sympy_formula_eval`) із явними припущеннями домену та одиницями.
   - Ніякого `self.add_sound()`; аудіо зводиться окремо через `math-books build <topic>`.
 - **Модульні візуальні блоки та теми (`src/math_books/visual_blocks/`):**
   - Перед тим як проєктувати кастомний Manim-код, розклади кожну сцену на наявні перевикористовувані блоки: `text_card`, `hook_choice`, `compare_bars`, `step_chain`, `challenge_card`, `image_stage` (SVG/PNG-схеми з `assets/diagrams/`), або доменні паки `packs/basketball/{half_court_diagram,scoreboard_duel}`.
@@ -75,6 +75,6 @@ description: >-
   - Коротший темп: 20–45 с (3–5 сцен), явні `duration_s` і часові `cues`, ультрастислі титри (до 6–10 слів на картку) та опора на наочну схему (`image_stage` / `visual_blocks`).
   - Підбирай або додавай трек із бази `assets/music/` (`math-books music list | generate | import`).
   - Педагогічний скелет (Predict → Observe → Explain → Mission) і явні `assumptions`/`limitations` для `content_review.py` лишаються обов'язковими.
-- **Перехід до реалізації:** після затвердження розкадровки користувачем збережи запис у банк сценаріїв (`content/bank/<id>.json` → `uv run math-books bank promote <id>`) і переходь до скілу `stem-basketball-video` (аудит `anti-slop-review` → `content_reviews/<lang>/<topic>.json` → TTS або `music_only` → `build` → `verify --frames`).
+- **Перехід до реалізації:** після затвердження розкадровки користувачем збережи запис у банк сценаріїв (`content/bank/<id>.json` → `uv run math-books bank promote <id>`) і переходь до скілу `stem-basketball-video` (аудит `anti-slop-review` → `content_reviews/<lang>/<topic>.json` → TTS або `music_only` → опціонально швидкий `build --draft` → `build` → `verify --frames`).
 
 Для нових тримовних уроків розкадровка має містити `uk`, `ru`, `en` narration (або наекранні титри для `music_only`) та підписи за стабільними scene ID. Формули лишаються спільними. Формат, мовні шляхи й `--lang` описані в `docs/three-language-videos.md`; старі Python-сцени не перекладаються автоматично. Нові декларативні уроки використовують явні `cues` (`cue_timeline.py`), а legacy `VerticalShortScene.word_timestamp` споживає лише перевірений `timing_snapshot` із точним Unicode-зіставленням, а не довільний JSON за часом зміни.

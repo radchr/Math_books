@@ -26,11 +26,13 @@ For all new videos (general STEM — math, physics, chemistry, biology — or ST
    - **`"music_only"` (20–45s):** No TTS/ASR. Uses a reusable track from `assets/music/` (`music_track`), explicit per-scene `duration_s`, timed `cues`, and concise on-screen captions/diagrams. Manage tracks via `uv run math-books music list | generate --backend procedural|lyria|musicgen|ace_step | import`.
 4. **Mandatory Editorial Review Gate (Both `voiceover` and `music_only`!):**
    - Initialize & approve `content_reviews/<lang>/<topic>.json` via `uv run math-books review <topic> --lang <lang> --init` and `anti-slop-review` on the actual localized text (for `music_only`, `script_quote` matches synthesized on-screen captions).
+   - Use deterministic `math_checks`: rational/probability checks (`expected_points`, `independent_attempts`, `independent_chain`, `fair_coin_followups`) and SymPy symbolic checks (`sympy_identity`, `sympy_solve`, `sympy_formula_eval` with explicit `symbols` assumptions).
    - Require `ok: true` before TTS or build. Never copy approvals across languages.
-5. **Synthesize (voiceover only), Build & Verify:**
+5. **Synthesize (voiceover only), Draft/Build & Verify:**
    - Voiceover only: `uv run math-books tts <topic> --lang <lang> --trim-edges` and `uv run math-books verify-audio <topic> --lang <lang>`.
-   - Build & verify (both modes): `uv run math-books build <topic> --lang <lang>` and `uv run math-books verify <topic> --lang <lang> --frames`.
-   - Inspect all extracted PNGs in `videos/video_<topic>/<lang>/preview_frames/` with `read_file`.
+   - Fast layout QA (optional, both modes): `uv run math-books build <topic> --lang <lang> --draft` → renders `540×960` `<topic>_draft.mp4`, runs `check_frame_bounds()` + `require_no_mobject_overlaps()`, and writes multi-point frames (`_01_start.png`, `_02_cue_*.png`, `_final.png`) to `preview_frames_draft/`.
+   - Production build & verify (both modes): `uv run math-books build <topic> --lang <lang>` and `uv run math-books verify <topic> --lang <lang> --frames`.
+   - Inspect all extracted multi-point PNGs in `videos/video_<topic>/<lang>/preview_frames/` with `read_file` against the 4-point visual checklist: (1) zero text/formula overlap, (2) zero 9:16 edge clipping, (3) contrast/readability, (4) visual-logic alignment with the narration/captions.
 
 The legacy custom Python-scene recipe below remains available only when a video needs bespoke Manim animations not covered by `visual_blocks`; do not regenerate the seven legacy Russian topics unless explicitly requested.
 
@@ -119,7 +121,7 @@ Before generating any TTS audio or rendering Manim video, the topic must pass th
    ```
 2. **Complete `content_reviews/<topic>.json`:**
    - Fill in `pedagogy` (`audience_age: 12`, `learning_objective`, `prerequisites`, `assumptions`, `limitations`, `challenge`, `expected_learning`).
-   - Add `sources` (`primary` or `textbook` with valid HTTP(S) `url` and `locator`) and deterministic `math_checks` (`independent_attempts`, `expected_points`, `fair_coin_followups`, `independent_chain`) or explicit `proof` strings.
+   - Add `sources` (`primary` or `textbook` with valid HTTP(S) `url` and `locator`) and deterministic `math_checks` (`independent_attempts`, `expected_points`, `fair_coin_followups`, `independent_chain`, `sympy_identity`, `sympy_solve`, `sympy_formula_eval`) or explicit `proof` strings.
    - Map every scene in `scene_reviews` with exact `script_quote` substrings from `SCENES`.
 3. **Record Substantive Review & Verify Gate:**
    - Run `uv run math-books review <topic>` to inspect any schema/calculation issues and obtain `dossier_sha256`.
@@ -175,7 +177,7 @@ This validates editorial approval, audio provenance, and ASR QA receipts; render
    ```
    Confirm `width=1080`, `height=1920`, `fps=30.0`, `duration_delta < 1.0`, empty `long_silences_s`, valid `.build.json` and `editorial.ok: true`, and overall `ok: true`.
 2. **Visual Frame Inspection:**
-   - Inspect all 5 extracted PNGs in `videos/video_<topic>/preview_frames/` with `read_file` to verify zero text clipping, zero overlapping labels, and balanced vertical layout.
+   - Inspect all extracted multi-point PNGs (`_01_start.png`, `_02_cue_*.png`, `_final.png`) in `videos/video_<topic>/preview_frames/` (or `videos/video_<topic>/<lang>/preview_frames/`) with `read_file` to verify: (1) zero text/formula overlap, (2) zero 9:16 edge clipping, (3) contrast and readability, and (4) visual-logic alignment with the script.
 3. **Unified Readiness & Full CI Quality Gate (`just ci`):**
    ```bash
    uv run math-books list
