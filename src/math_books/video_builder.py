@@ -148,6 +148,10 @@ def render_fingerprint(
         digest.update(lesson_digest(topic_scenes(topic, base)).encode())
         for name in ("languages.py", "lessons.py", "cue_timeline.py"):
             digest.update((base / "src/math_books" / name).read_bytes())
+        from math_books.visual_blocks import visual_source_files
+
+        for source_file in visual_source_files():
+            digest.update(source_file.read_bytes())
         if snapshot is None:
             snapshot = timing_snapshot(base / topic.video_dir / "audio/manifest.json", manifest, base)
         digest.update(json.dumps(snapshot, sort_keys=True).encode())

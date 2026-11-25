@@ -14,10 +14,18 @@ def _contains(tokens: list[str], phrase: list[str]) -> int:
     return sum(tokens[i : i + len(phrase)] == phrase for i in range(len(tokens) - len(phrase) + 1))
 
 
-def localize_cues(cues, translations: dict, language: str, *, formula: str) -> list[dict]:
+def localize_cues(
+    cues,
+    translations: dict,
+    language: str,
+    *,
+    formula: str,
+    allowed_targets: frozenset[str] | None = None,
+) -> list[dict]:
     validate_language(language)
     if not isinstance(cues, list):
         raise ValueError("Scene cues must be a list")
+    valid_targets = allowed_targets if allowed_targets is not None else frozenset({"title", "body", "formula"})
     ids, targets = set(), set()
     result = []
     for cue in cues:
@@ -26,8 +34,8 @@ def localize_cues(cues, translations: dict, language: str, *, formula: str) -> l
         ident, target = cue["id"], cue["target"]
         if not isinstance(ident, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", ident) or ident in ids:
             raise ValueError("Invalid or duplicate cue ID")
-        if target not in ("title", "body", "formula") or target in targets:
-            raise ValueError("Cue target must be unique: title, body or formula")
+        if target not in valid_targets or target in targets:
+            raise ValueError(f"Cue target must be unique and supported: {', '.join(sorted(valid_targets))}")
         if target == "formula" and not formula:
             raise ValueError("Cannot reveal an empty formula")
         if cue["anchor"] not in ("start", "end") or type(cue["occurrence"]) is not int or cue["occurrence"] < 1:

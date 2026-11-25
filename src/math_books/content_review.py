@@ -10,7 +10,7 @@ import hashlib
 import json
 import math
 import re
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import date
 from fractions import Fraction
 from pathlib import Path
@@ -183,62 +183,96 @@ def make_review_template(
     }
 
 
-def _math_check(check: dict) -> dict:
+def _check_independent_chain(check: dict) -> dict:
     ident = check["id"]
-    if check.get("kind") == "independent_chain":
-        steps = check.get("step_probabilities")
-        if not isinstance(steps, list) or not 1 <= len(steps) <= 100:
-            raise ValueError(f"{ident}: provide 1–100 independent steps")
-        probabilities = [_fraction(value, f"{ident}.step_probabilities") for value in steps]
-        direct = _fraction(check["direct_probability"], f"{ident}.direct_probability")
-        _require(all(0 <= value <= 1 for value in [direct, *probabilities]), f"{ident}: invalid probability")
-        actual = math.prod(probabilities)
-        comparison = ">" if direct > actual else "<" if direct < actual else "="
-        _require(
-            actual == _fraction(check["expected_chain"], f"{ident}.expected_chain"),
-            f"{ident}: independent-chain product is wrong (actual {actual})",
-        )
-        _require(check.get("expected_comparison") == comparison, f"{ident}: incorrect direct/chain comparison")
-        return {"id": ident, "ok": True, "chain_probability": str(actual), "comparison": comparison}
-    if check.get("kind") == "independent_attempts":
-        probability = _fraction(check["probability"], f"{ident}.probability")
-        attempts = check["attempts"]
-        _require(
-            0 <= probability <= 1 and type(attempts) is int and 1 <= attempts <= 100,
-            f"{ident}: invalid probability or attempt count",
-        )
-        actual = 1 - (1 - probability) ** attempts
-        _require(
-            actual == _fraction(check["expected_at_least_one"], f"{ident}.expected_at_least_one"),
-            f"{ident}: complement-rule calculation is wrong (actual {actual})",
-        )
-        return {"id": ident, "ok": True, "at_least_one": str(actual)}
-    if check.get("kind") == "expected_points":
-        probability = _fraction(check["probability"], f"{ident}.probability")
-        points = check["points"]
-        _require(0 <= probability <= 1 and type(points) is int and points > 0, f"{ident}: invalid probability/points")
-        actual = probability * points
-        _require(
-            actual == _fraction(check["expected"], f"{ident}.expected"),
-            f"{ident}: expected points calculation is wrong (actual {actual})",
-        )
-        return {"id": ident, "ok": True, "actual": str(actual)}
-    if check.get("kind") == "fair_coin_followups":
-        rows = coin_followup_examples()
-        sequence_mean = sum((rate for _, rate in rows), Fraction()) / len(rows)
-        hits = attempts = 0
-        for sequence, _ in rows:
-            following = [sequence[i + 1] for i in range(2) if sequence[i] == "О"]
-            hits += following.count("О")
-            attempts += len(following)
-        pooled = Fraction(hits, attempts)
-        _require(
-            sequence_mean == _fraction(check["expected_sequence_mean"], f"{ident}.expected_sequence_mean")
-            and pooled == _fraction(check["expected_pooled"], f"{ident}.expected_pooled"),
-            f"{ident}: coin estimator calculation is wrong",
-        )
-        return {"id": ident, "ok": True, "sequence_mean": str(sequence_mean), "pooled": str(pooled)}
-    raise ValueError(f"{ident}: unsupported math check kind; supply a supported check or a reviewed proof")
+    steps = check.get("step_probabilities")
+    if not isinstance(steps, list) or not 1 <= len(steps) <= 100:
+        raise ValueError(f"{ident}: provide 1–100 independent steps")
+    probabilities = [_fraction(value, f"{ident}.step_probabilities") for value in steps]
+    direct = _fraction(check["direct_probability"], f"{ident}.direct_probability")
+    _require(all(0 <= value <= 1 for value in [direct, *probabilities]), f"{ident}: invalid probability")
+    actual = math.prod(probabilities)
+    comparison = ">" if direct > actual else "<" if direct < actual else "="
+    _require(
+        actual == _fraction(check["expected_chain"], f"{ident}.expected_chain"),
+        f"{ident}: independent-chain product is wrong (actual {actual})",
+    )
+    _require(check.get("expected_comparison") == comparison, f"{ident}: incorrect direct/chain comparison")
+    return {"id": ident, "ok": True, "chain_probability": str(actual), "comparison": comparison}
+
+
+def _check_independent_attempts(check: dict) -> dict:
+    ident = check["id"]
+    probability = _fraction(check["probability"], f"{ident}.probability")
+    attempts = check["attempts"]
+    _require(
+        0 <= probability <= 1 and type(attempts) is int and 1 <= attempts <= 100,
+        f"{ident}: invalid probability or attempt count",
+    )
+    actual = 1 - (1 - probability) ** attempts
+    _require(
+        actual == _fraction(check["expected_at_least_one"], f"{ident}.expected_at_least_one"),
+        f"{ident}: complement-rule calculation is wrong (actual {actual})",
+    )
+    return {"id": ident, "ok": True, "at_least_one": str(actual)}
+
+
+def _check_expected_points(check: dict) -> dict:
+    ident = check["id"]
+    probability = _fraction(check["probability"], f"{ident}.probability")
+    points = check["points"]
+    _require(0 <= probability <= 1 and type(points) is int and points > 0, f"{ident}: invalid probability/points")
+    actual = probability * points
+    _require(
+        actual == _fraction(check["expected"], f"{ident}.expected"),
+        f"{ident}: expected points calculation is wrong (actual {actual})",
+    )
+    return {"id": ident, "ok": True, "actual": str(actual)}
+
+
+def _check_fair_coin_followups(check: dict) -> dict:
+    ident = check["id"]
+    rows = coin_followup_examples()
+    sequence_mean = sum((rate for _, rate in rows), Fraction()) / len(rows)
+    hits = attempts = 0
+    for sequence, _ in rows:
+        following = [sequence[i + 1] for i in range(2) if sequence[i] == "О"]
+        hits += following.count("О")
+        attempts += len(following)
+    pooled = Fraction(hits, attempts)
+    _require(
+        sequence_mean == _fraction(check["expected_sequence_mean"], f"{ident}.expected_sequence_mean")
+        and pooled == _fraction(check["expected_pooled"], f"{ident}.expected_pooled"),
+        f"{ident}: coin estimator calculation is wrong",
+    )
+    return {"id": ident, "ok": True, "sequence_mean": str(sequence_mean), "pooled": str(pooled)}
+
+
+CHECK_REGISTRY: dict[str, Callable[[dict], dict]] = {
+    "independent_chain": _check_independent_chain,
+    "independent_attempts": _check_independent_attempts,
+    "expected_points": _check_expected_points,
+    "fair_coin_followups": _check_fair_coin_followups,
+}
+
+
+def register_math_check(kind: str, checker: Callable[[dict], dict]) -> None:
+    """Register a deterministic editorial checker for a domain pack."""
+    if not isinstance(kind, str) or not kind.strip():
+        raise ValueError("Check kind must be a non-empty string")
+    CHECK_REGISTRY[kind] = checker
+
+
+def _math_check(check: dict) -> dict:
+    from math_books.packs import ensure_packs_loaded
+
+    ensure_packs_loaded()
+    ident = check["id"]
+    kind = check.get("kind")
+    checker = CHECK_REGISTRY.get(kind) if isinstance(kind, str) else None
+    if checker is None:
+        raise ValueError(f"{ident}: unsupported math check kind; supply a supported check or a reviewed proof")
+    return checker(check)
 
 
 def _index(items: object, name: str, *, key: str = "id") -> dict[str, dict]:
@@ -264,7 +298,8 @@ def _validate(dossier: dict, scenes, topic, root, expected_scene_file, language=
     )
     _require(dossier.get("topic") == topic, "Review topic does not match requested topic")
     _require(dossier.get("language", "ru") == language, "Review language does not match requested language")
-    if lesson_path(root, topic).is_file():
+    is_localized = lesson_path(root, topic).is_file()
+    if is_localized:
         localized = load_lesson(root, topic, language)
         _require(
             dossier.get("localized_content_sha256") == lesson_digest(localized),
@@ -292,10 +327,25 @@ def _validate(dossier: dict, scenes, topic, root, expected_scene_file, language=
     pedagogy = dossier.get("pedagogy")
     if not isinstance(pedagogy, dict):
         raise ValueError("pedagogy: expected an object")
-    _require(
-        type(pedagogy.get("audience_age")) is int and pedagogy["audience_age"] == 12,
-        "pedagogy.audience_age: this project's target learner is 12",
-    )
+    audience_age = pedagogy.get("audience_age")
+    if is_localized:
+        valid_int = type(audience_age) is int and 5 <= audience_age <= 99
+        valid_range = (
+            isinstance(audience_age, dict)
+            and set(audience_age) == {"min", "max"}
+            and type(audience_age["min"]) is int
+            and type(audience_age["max"]) is int
+            and 5 <= audience_age["min"] <= audience_age["max"] <= 99
+        )
+        _require(
+            valid_int or valid_range,
+            "pedagogy.audience_age: expected an integer (5..99) or {min, max} age range",
+        )
+    else:
+        _require(
+            type(audience_age) is int and audience_age == 12,
+            "pedagogy.audience_age: this project's target learner is 12",
+        )
     for field in ("learning_objective", "challenge", "expected_learning"):
         _text(pedagogy.get(field), f"pedagogy.{field}")
     for field in ("prerequisites", "assumptions", "limitations"):

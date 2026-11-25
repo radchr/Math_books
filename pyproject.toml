@@ -48,7 +48,12 @@ python-version = "3.13"
 include = ["src", "tests"]
 
 [[tool.ty.overrides]]
-include = ["src/math_books/*_scene.py", "src/math_books/video_ui.py"]
+include = [
+    "src/math_books/*_scene.py",
+    "src/math_books/video_ui.py",
+    "src/math_books/visual_blocks/*.py",
+    "src/math_books/packs/**/*.py",
+]
 [tool.ty.overrides.rules]
 # Manim's Point3DLike / ManimColor stubs reject standard list[float] coordinates and color defaults
 invalid-argument-type = "ignore"

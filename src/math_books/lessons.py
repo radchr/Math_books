@@ -32,13 +32,31 @@ def _unique_keys(pairs):
     return result
 
 
-def load_lesson(root: Path, key: str, language: str = "ru") -> list[dict]:
-    """Load narration/captions before layout; validate every supplied translation."""
+def validate_lesson_data(data: object, key: str, language: str = "ru", *, source_label: str = "") -> list[dict]:
+    """Validate declarative 3-language lesson structure and return localized scene rows."""
+    from math_books.packs import get_pack
+    from math_books.themes import get_theme
+    from math_books.visual_blocks import get_visual_block
+
     validate_language(language)
-    path = lesson_path(root, key)
-    data = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=_unique_keys)
     if not isinstance(data, dict) or data.get("schema_version") != 1 or data.get("topic") != key:
-        raise ValueError(f"Invalid lesson schema/topic: {path}")
+        raise ValueError(f"Invalid lesson schema/topic: {source_label or key}")
+
+    lesson_theme: str | None = None
+    if "domain" in data:
+        domain = data["domain"]
+        if not isinstance(domain, str) or not domain.strip():
+            raise ValueError("Lesson domain must be a non-empty string")
+        if domain != "core":
+            pack = get_pack(domain)
+            lesson_theme = pack.default_theme
+    if "theme" in data:
+        theme_name = data["theme"]
+        if not isinstance(theme_name, str) or not theme_name.strip():
+            raise ValueError("Lesson theme must be a non-empty string")
+        get_theme(theme_name)
+        lesson_theme = theme_name
+
     rows = data.get("scenes")
     if not isinstance(rows, list) or not rows:
         raise ValueError("Lesson must contain at least one scene")
@@ -55,20 +73,59 @@ def load_lesson(root: Path, key: str, language: str = "ru") -> list[dict]:
         if not isinstance(translations, dict) or set(translations) != set(SUPPORTED_LANGUAGES):
             raise ValueError(f"{ident}: complete uk/ru/en translations are required")
         for lang, fields in translations.items():
-            if not isinstance(fields, dict) or set(fields) != {"text", "title", "body"}:
+            if not isinstance(fields, dict):
                 raise ValueError(f"{ident}/{lang}: expected text, title and body")
-            if any(not isinstance(value, str) or not value.strip() for value in fields.values()):
+            required_keys = {"text", "title", "body"}
+            allowed_keys = required_keys | {"labels"}
+            if not required_keys <= set(fields) or not set(fields) <= allowed_keys:
+                raise ValueError(f"{ident}/{lang}: expected text, title and body")
+            if any(not isinstance(fields[k], str) or not fields[k].strip() for k in required_keys):
                 raise ValueError(f"{ident}/{lang}: translation must not be empty")
+            if "labels" in fields:
+                labels = fields["labels"]
+                if not isinstance(labels, dict) or any(
+                    not isinstance(k, str) or not k.strip() or not isinstance(v, str) or not v.strip()
+                    for k, v in labels.items()
+                ):
+                    raise ValueError(f"{ident}/{lang}: labels must map non-empty keys to non-empty strings")
         formula = row.get("formula", "")
         if not isinstance(formula, str) or re.search(r"[^0-9A-Za-z\\{}_^=+*/().,%<>!| \-]", formula):
             raise ValueError(f"{ident}: use pure mathematical notation in formula")
         if set(re.findall(r"\\([A-Za-z]+|%)", formula)) - FORMULA_COMMANDS:
             raise ValueError(f"{ident}: unsupported LaTeX command in formula")
+
+        allowed_targets: frozenset[str] | None = None
+        visual_payload: dict | None = None
+        if "visual" in row:
+            visual = row["visual"]
+            if not isinstance(visual, dict) or not isinstance(visual.get("template"), str):
+                raise ValueError(f"{ident}: visual requires a template name")
+            params = visual.get("params", {})
+            if not isinstance(params, dict):
+                raise ValueError(f"{ident}: visual.params must be an object")
+            spec = get_visual_block(visual["template"])
+            spec.validate_params(params, translations, ident)
+            allowed_targets = spec.cue_targets
+            visual_payload = {"template": spec.name, "params": params}
+
         localized = {"id": ident, **translations[language], "formula": formula}
+        if visual_payload is not None:
+            localized["visual"] = visual_payload
+        if lesson_theme is not None:
+            localized["theme"] = lesson_theme
         if "cues" in row:
-            localized["cues"] = localize_cues(row["cues"], translations, language, formula=formula)
+            localized["cues"] = localize_cues(
+                row["cues"], translations, language, formula=formula, allowed_targets=allowed_targets
+            )
         result.append(localized)
     return result
+
+
+def load_lesson(root: Path, key: str, language: str = "ru") -> list[dict]:
+    """Load narration/captions before layout; validate every supplied translation."""
+    path = lesson_path(root, key)
+    data = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=_unique_keys)
+    return validate_lesson_data(data, key, language, source_label=str(path))
 
 
 def discover_lessons(root: Path) -> list[str]:

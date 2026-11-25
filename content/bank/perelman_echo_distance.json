@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "id": "perelman_echo_distance",
+  "status": "idea",
+  "domain": "physics",
+  "theme": "science_lab",
+  "audience": {
+    "min_age": 11,
+    "max_age": 14
+  },
+  "tags": [
+    "physics",
+    "acoustics",
+    "speed_of_sound",
+    "perelman"
+  ],
+  "title": {
+    "uk": "Як виміряти відстань за допомогою луни?",
+    "ru": "Как измерить расстояние с помощью эха?",
+    "en": "How to Measure Distance Using an Echo?"
+  },
+  "summary": "Non-basketball STEM idea: measuring cliff or stadium distance from echo return time (d = v * t / 2), highlighting the round-trip factor of 2.",
+  "source": {
+    "title": "Ya. I. Perelman, Physics for Entertainment",
+    "locator": "Chapter on Sound and Echo (round-trip travel time of sound waves)",
+    "url": "https://archive.org/details/physicsforentert035428mbp"
+  },
+  "core_concept": {
+    "model": "d = v * t / 2 with v ≈ 340 m/s in air at ~15°C",
+    "templates_used": [
+      "hook_choice",
+      "step_chain",
+      "challenge_card"
+    ]
+  },
+  "alt_hooks": [
+    {
+      "uk": "Крикни на стадіоні — і звук сам стане твоєю рулеткою!",
+      "ru": "Крикни на стадионе — и звук сам станет твоей рулеткой!",
+      "en": "Shout in a stadium and sound becomes your tape measure!"
+    }
+  ],
+  "promoted_lesson": null,
+  "lesson_draft": null
+}

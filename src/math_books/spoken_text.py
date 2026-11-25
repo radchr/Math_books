@@ -18,6 +18,9 @@ from math_books.multilingual_numbers import normalize as normalize_multilingual
 
 @lru_cache(maxsize=1)
 def _morphology():
+    import logging
+
+    logging.getLogger("pymorphy3").setLevel(logging.WARNING)
     return pymorphy3.MorphAnalyzer(), snowballstemmer.stemmer("russian")
 
 

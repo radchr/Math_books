@@ -1,0 +1,37 @@
+{
+  "pause": {
+    "uk": "Пауза! Подумай сам",
+    "ru": "Пауза! Подумай сам",
+    "en": "Pause! Try it yourself"
+  },
+  "answer": {
+    "uk": "Відповідь",
+    "ru": "Ответ",
+    "en": "Answer"
+  },
+  "model_limit": {
+    "uk": "Межа моделі",
+    "ru": "Граница модели",
+    "en": "Model limit"
+  },
+  "winner": {
+    "uk": "Кращий вибір",
+    "ru": "Лучший выбор",
+    "en": "Better choice"
+  },
+  "result": {
+    "uk": "Результат",
+    "ru": "Результат",
+    "en": "Result"
+  },
+  "vs": {
+    "uk": "АБО",
+    "ru": "ИЛИ",
+    "en": "OR"
+  },
+  "challenge_badge": {
+    "uk": "ЧЕЛЕНДЖ",
+    "ru": "ЧЕЛЛЕНДЖ",
+    "en": "CHALLENGE"
+  }
+}

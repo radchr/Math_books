@@ -53,7 +53,7 @@ Create 55–70 second vertical (`1080×1920`, `30 fps`) popular-science videos c
 
 1. `src/math_books/generate_<topic>_tts.py` — defines `SCENES` (5 dicts with `id` and `text`) and calls `generate_topic_tts(SCENES, "videos/video_<topic>")`.
 2. `src/math_books/<topic>_scene.py` — calls `configure_vertical_9_16()` and defines `<SceneClass>(VerticalShortScene)`.
-3. Register a `VideoTopic` entry in `VIDEO_TOPICS` inside [video_builder.py](../../../src/math_books/video_builder.py) with `video_dir="videos/video_<topic>"`.
+3. Register a `VideoTopic` entry in `VIDEO_TOPICS` inside [topics.py](../../../src/math_books/topics.py) with `video_dir="videos/video_<topic>"`.
 4. `content_reviews/<topic>.json` — mandatory scientific and pedagogical review dossier (created via `uv run math-books review <topic> --init`).
 
 > [!IMPORTANT]
@@ -106,7 +106,7 @@ Before generating any TTS audio or rendering Manim video, the topic must pass th
    ```
 2. **Complete `content_reviews/<topic>.json`:**
    - Fill in `pedagogy` (`audience_age: 12`, `learning_objective`, `prerequisites`, `assumptions`, `limitations`, `challenge`, `expected_learning`).
-   - Add `sources` (`primary` or `textbook` with valid HTTP(S) `url` and `locator`) and deterministic `math_checks` (`independent_attempts`, `expected_points`, `fair_coin_followups`) or explicit `proof` strings.
+   - Add `sources` (`primary` or `textbook` with valid HTTP(S) `url` and `locator`) and deterministic `math_checks` (`independent_attempts`, `expected_points`, `fair_coin_followups`, `independent_chain`) or explicit `proof` strings.
    - Map every scene in `scene_reviews` with exact `script_quote` substrings from `SCENES`.
 3. **Record Substantive Review & Verify Gate:**
    - Run `uv run math-books review <topic>` to inspect any schema/calculation issues and obtain `dossier_sha256`.
@@ -126,11 +126,11 @@ Before generating any TTS audio or rendering Manim video, the topic must pass th
    # Default: Gemini TTS (Russian scripts)
    uv run math-books tts <topic> --trim-edges
 
-   # Ukrainian multi-provider fallback (StyleTTS2 -> Piper -> Edge TTS)
-   uv run math-books tts <topic> --provider uk --uk-profile tyshyn --trim-edges
+   # Ukrainian multi-provider fallback for a NEW three-language lesson (StyleTTS2 -> optional Piper -> Edge TTS)
+   uv run math-books tts <topic> --lang uk --provider uk --uk-profile tyshyn --trim-edges
    ```
-   - **Gemini (`--provider gemini`, default):** Uses [tts_engine.py](../../../src/math_books/tts_engine.py): sends only raw narration text (`PROMPT_REVISION = 2`), rotates `gemini-3.8-flash-tts` (clips 1–3) → `gemini-2.5-flash-preview-tts` / `gemini-3.8-flash-lite-tts` (clips 4–5), and retries transient `httpx.HTTPError` / rate limits while failing fast on 400/401/403.
-   - **Ukrainian Fallback (`--provider uk`):** Uses [uk_tts_providers.py](../../../src/math_books/uk_tts_providers.py) and [voice_profiles.toml](../../../src/math_books/voice_profiles.toml) (`StyleTTS2` → local `Piper` → `Edge TTS`), pins the first working provider for the entire batch (never mixing voices mid-video), and normalizes every clip to 24 kHz mono 16-bit PCM WAV.
+   - **Gemini (`--provider gemini`, default):** Uses [tts_engine.py](../../../src/math_books/tts_engine.py): sends only raw narration text (`PROMPT_REVISION = 2`), passes `GEMINI_API_KEY` via `x-goog-api-key` header (redacted from errors), rotates `gemini-3.8-flash-tts` (clips 1–3) → `gemini-2.5-flash-preview-tts` / `gemini-3.8-flash-lite-tts` (clips 4–5), and retries transient `httpx.HTTPError` / rate limits while failing fast on 400/401/403.
+   - **Ukrainian Fallback (`--lang uk --provider uk`):** Uses [uk_tts_providers.py](../../../src/math_books/uk_tts_providers.py) and [voice_profiles.toml](../../../src/math_books/voice_profiles.toml) (`StyleTTS2` → optional local `Piper` → `Edge TTS`), pins the first working provider for the entire batch (never mixing voices mid-video), and normalizes every clip to 24 kHz mono 16-bit PCM WAV.
    - Writes immutable WAV files under `videos/video_<topic>/audio/clips/<id>-<fp>-<sha>.wav`, per-scene `.cache.json`, and `videos/video_<topic>/audio/manifest.json`.
    - **Automatic Local ASR Gate (`voiceover_qa.py`):** Every generated (or cached) clip is transcribed locally with the selected language/model and compared against the script. Unexpected added speech, repeated takes or altered numbers/negation/math terms block publication. English itself is valid for `en`. A retry must preserve the pinned batch identity; ASR unavailability must not trigger paid synthesis retries.
 2. **Explicit Audio Verification & Listening QC:**
@@ -168,4 +168,4 @@ This validates editorial approval, audio provenance, and ASR QA receipts; render
    uv run math-books list
    uv run ruff format --check src tests && uv run ruff check src tests && uv run ty check && uv run python -m unittest discover -s tests -v && uv lock --check
    ```
-   Confirm the topic shows `(review:approved | audio:verified | video:verified)` in `math-books list` and all lint, formatting, `ty` type checks, and `unittest`/`hypothesis` tests pass.
+   Confirm `math-books list` shows `(review:approved | audio:unverified | video:unverified)` (fast read-only inventory never certifies media — `verify-audio` and `verify --frames` above are the authoritative proof) and all lint, formatting, `ty` type checks, and `unittest`/`hypothesis` tests pass.

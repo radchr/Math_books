@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "id": "basketball_three_vs_chain_draft",
+  "status": "draft",
+  "domain": "basketball",
+  "theme": "basketball_dark",
+  "audience": {
+    "min_age": 12,
+    "max_age": 12
+  },
+  "tags": [
+    "basketball",
+    "probability",
+    "multiplication_rule",
+    "endgame"
+  ],
+  "title": {
+    "uk": "Трійка чи швидкі два з фолом?",
+    "ru": "Трёхочковый или быстрые два с фолом?",
+    "en": "Buzzer Three or Quick Two Plus Foul?"
+  },
+  "summary": "Reusable three-language modular draft built purely from core and basketball visual blocks (scoreboard_duel, compare_bars, challenge_card).",
+  "source": {
+    "title": "OpenStax Introductory Statistics 2e, 3.3 Two Basic Rules of Probability",
+    "locator": "Multiplication Rule for independent events",
+    "url": "https://openstax.org/books/introductory-statistics-2e/pages/3-3-two-basic-rules-of-probability"
+  },
+  "core_concept": {
+    "model": "Compare direct probability 3/10 against independent chain (7/10) * (1/2) * (7/10) = 49/200",
+    "templates_used": [
+      "basketball.scoreboard_duel",
+      "compare_bars",
+      "challenge_card"
+    ]
+  },
+  "alt_hooks": [
+    {
+      "uk": "Десять секунд на табло і мінус три: який план обере математика?",
+      "ru": "Десять секунд на табло и минус три: какой план выберет математика?",
+      "en": "Ten seconds left and down by three: which play does math pick?"
+    }
+  ],
+  "promoted_lesson": null,
+  "lesson_draft": {
+    "schema_version": 1,
+    "topic": "basketball_three_vs_chain_draft",
+    "domain": "basketball",
+    "theme": "basketball_dark",
+    "scenes": [
+      {
+        "id": "01_hook",
+        "visual": {
+          "template": "basketball.scoreboard_duel",
+          "params": {
+            "score": "98 : 101",
+            "clock": "0:10"
+          }
+        },
+        "translations": {
+          "uk": {
+            "text": "До сирени десять секунд і твоя команда програє три очки. Бити дальній чи грати через фол?",
+            "title": "Десять секунд до кінця",
+            "body": "Мінус три очки. Який план дає вищий шанс у моделі?"
+          },
+          "ru": {
+            "text": "До сирены десять секунд и твоя команда проигрывает три очка. Бить дальний или играть через фол?",
+            "title": "Десять секунд до конца",
+            "body": "Минус три очка. Какой план даёт выше шанс в модели?"
+          },
+          "en": {
+            "text": "Ten seconds left and your team is down by three points. Shoot a three or take a quick two and foul?",
+            "title": "Ten Seconds Left",
+            "body": "Down by three. Which plan has the higher model probability?"
+          }
+        }
+      },
+      {
+        "id": "02_compare",
+        "formula": "0.30 > 0.245",
+        "visual": {
+          "template": "compare_bars",
+          "params": {
+            "items": [
+              {
+                "id": "plan_a",
+                "value": "3/10",
+                "color": "primary"
+              },
+              {
+                "id": "plan_b",
+                "value": "49/200",
+                "color": "secondary"
+              }
+            ],
+            "unit": "%",
+            "winner": "plan_a"
+          }
+        },
+        "cues": [
+          {
+            "id": "reveal_winner",
+            "target": "winner",
+            "anchor": "start",
+            "occurrence": 1,
+            "phrases": {
+              "uk": "більше",
+              "ru": "больше",
+              "en": "higher"
+            }
+          }
+        ],
+        "translations": {
+          "uk": {
+            "text": "У моделі три кроки дають двадцять чотири цілих і п'ять десятих відсотка, а один дальній тридцять відсотків — це більше.",
+            "title": "Порівняння планів",
+            "body": "Три незалежні кроки множаться і зменшують загальний шанс.",
+            "labels": {
+              "plan_a": "Дальній кидок",
+              "plan_b": "Ланцюжок з 3 кроків"
+            }
+          },
+          "ru": {
+            "text": "В модели три шага дают двадцать четыре целых и пять десятых процента, а один дальний тридцать процентов — это больше.",
+            "title": "Сравнение планов",
+            "body": "Три независимых шага перемножаются и уменьшают общий шанс.",
+            "labels": {
+              "plan_a": "Дальний бросок",
+              "plan_b": "Цепочка из 3 шагов"
+            }
+          },
+          "en": {
+            "text": "In the model three steps give twenty-four point five percent, while one three-pointer gives thirty percent — that is higher.",
+            "title": "Comparing the Plans",
+            "body": "Multiplying three independent steps shrinks the overall chance.",
+            "labels": {
+              "plan_a": "Direct Three",
+              "plan_b": "Three-Step Chain"
+            }
+          }
+        }
+      },
+      {
+        "id": "03_challenge",
+        "formula": "0.8^3 = 0.512",
+        "visual": {
+          "template": "challenge_card",
+          "params": {
+            "answer_label": "answer_value",
+            "limit_label": "limit_note"
+          }
+        },
+        "cues": [
+          {
+            "id": "reveal_answer",
+            "target": "answer",
+            "anchor": "start",
+            "occurrence": 1,
+            "phrases": {
+              "uk": "Відповідь",
+              "ru": "Ответ",
+              "en": "Answer"
+            }
+          }
+        ],
+        "translations": {
+          "uk": {
+            "text": "Якщо кожен із трьох кроків має шанс вісімдесят відсотків, чи буде підсумок більшим за половину? Відповідь: так, п'ятдесят один і два десятих відсотка.",
+            "title": "Твій хід",
+            "body": "Кожен із 3 незалежних кроків має шанс 80%. Чи перевищить результат 50%?",
+            "labels": {
+              "answer_value": "Так, 51,2%",
+              "limit_note": "Це розрахунок моделі, а не гарантія одного матчу."
+            }
+          },
+          "ru": {
+            "text": "Если каждый из трёх шагов имеет шанс восемьдесят процентов, будет ли итог больше половины? Ответ: да, пятьдесят одна целая и две десятых процента.",
+            "title": "Твой ход",
+            "body": "Каждый из 3 независимых шагов имеет шанс 80%. Превысит ли итог 50%?",
+            "labels": {
+              "answer_value": "Да, 51,2%",
+              "limit_note": "Это расчёт модели, а не гарантия одного матча."
+            }
+          },
+          "en": {
+            "text": "If each of three steps has an eighty percent chance, is the combined chance over fifty percent? Answer: yes, fifty-one point two percent.",
+            "title": "Your Turn",
+            "body": "Each of 3 independent steps has an 80% chance. Does the product beat 50%?",
+            "labels": {
+              "answer_value": "Yes, 51.2%",
+              "limit_note": "This is a model calculation, not a single-game guarantee."
+            }
+          }
+        }
+      }
+    ]
+  }
+}

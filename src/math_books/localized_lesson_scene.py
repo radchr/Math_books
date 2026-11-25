@@ -2,15 +2,16 @@
 
 import json
 import os
-import textwrap
 from pathlib import Path
 
-from manim import DOWN, UP, FadeIn, FadeOut, Group, MathTex, Text
+from manim import FadeIn, FadeOut, Group
 
 from math_books.cue_timeline import event_timeline, validate_event_log
 from math_books.languages import validate_language
 from math_books.lessons import load_lesson
-from math_books.video_ui import ACCENT_GOLD, FONT, VerticalShortScene, configure_vertical_9_16
+from math_books.themes import get_theme
+from math_books.video_ui import VerticalShortScene, configure_vertical_9_16
+from math_books.visual_blocks import get_visual_block
 
 configure_vertical_9_16()
 
@@ -71,28 +72,14 @@ class LocalizedLessonScene(VerticalShortScene):
             raise ValueError("Renderer did not reach the allocated audio endpoint")
 
     def show_card(self, row: dict, duration: float) -> None:
-        title = Text(row["title"], font=FONT, font_size=40, color=ACCENT_GOLD)
-        if title.width > 7.6:
-            title.scale_to_fit_width(7.6)
-        title.move_to(UP * 5.7)
-        wrapped = "\n".join(
-            line for paragraph in row["body"].splitlines() for line in (textwrap.wrap(paragraph, width=34) or [""])
-        )
-        body = Text(wrapped, font=FONT, font_size=36, line_spacing=1.3)
-        if body.width > 7.4:
-            body.scale_to_fit_width(7.4)
-        if body.height > 4.8:
-            body.scale_to_fit_height(4.8)
-        body.move_to(UP * 1.7)
-        objects = {"title": title, "body": body}
-        if row["formula"]:
-            formula = MathTex(row["formula"], font_size=48)
-            if formula.width > 7.4:
-                formula.scale_to_fit_width(7.4)
-            formula.move_to(DOWN * 2.1)
-            objects["formula"] = formula
+        theme = get_theme(row.get("theme", "basketball_dark"))
+        template = row.get("visual", {}).get("template", "text_card")
+        objects = get_visual_block(template).build(theme, self._lesson_language, row)
         # Bound the animation cost for short test clips; narration remains authoritative.
         events = self._event_timeline[row["id"]]
+        for event in events:
+            if event["target"] not in objects:
+                raise ValueError(f"Cue {event['id']} target {event['target']!r} not produced by {template!r}")
         hidden = {event["target"] for event in events}
         visible = [mob for name, mob in objects.items() if name not in hidden]
         initial_duration = min(0.6, duration / 2, events[0]["time"] if events else duration)

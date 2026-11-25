@@ -11,6 +11,7 @@ from pathlib import Path
 import httpx
 
 from math_books.build_sample_md import build_markdown, parse_page_spec
+from math_books.content_bank import BANK_STATUSES, load_bank_entry, promote_bank_entry, query_bank
 from math_books.content_review import check_content_review, make_review_template, require_content_review, review_path
 from math_books.languages import SUPPORTED_LANGUAGES
 from math_books.tts_engine import generate_topic_tts
@@ -25,6 +26,7 @@ from math_books.video_builder import (
     verify_topic_audio,
     verify_topic_video,
 )
+from math_books.visual_blocks import visual_block_catalog
 
 
 def cmd_list(_args: argparse.Namespace) -> int:
@@ -145,6 +147,38 @@ def cmd_digitize(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_bank(args: argparse.Namespace) -> int:
+    root = project_root()
+    if args.bank_command == "list":
+        entries = query_bank(root, status=args.status, domain=args.domain, tag=args.tag, template=args.template)
+        if args.json:
+            print(json.dumps(entries, ensure_ascii=False, indent=2))
+            return 0
+        if not entries:
+            print("(no matching bank entries)")
+            return 0
+        for item in entries:
+            tags = ", ".join(item["tags"])
+            templates = ", ".join(item["templates"])
+            print(
+                f"- {item['id']:30s} | {item['status']:8s} | {item['domain']:10s} | "
+                f"templates:[{templates}] | tags:[{tags}]"
+            )
+        return 0
+    if args.bank_command == "show":
+        entry = load_bank_entry(root, args.id)
+        print(json.dumps(entry, ensure_ascii=False, indent=2))
+        return 0
+    if args.bank_command == "promote":
+        result = promote_bank_entry(root, args.id, topic=args.topic)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+    if args.bank_command == "catalog":
+        print(json.dumps(visual_block_catalog(), ensure_ascii=False, indent=2))
+        return 0
+    raise ValueError(f"Unknown bank action: {args.bank_command}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="math-books", description="Math_books STEM-Basketball & Digitization CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -208,6 +242,31 @@ def build_parser() -> argparse.ArgumentParser:
     p_dig.add_argument("--out-dir", default=None, help="Output directory for Markdown and images")
     p_dig.add_argument("--output-name", default=None, help="Output Markdown filename")
     p_dig.set_defaults(func=cmd_digitize)
+
+    p_bank = sub.add_parser("bank", help="Manage reusable scenario/idea bank and visual block catalog")
+    bank_sub = p_bank.add_subparsers(dest="bank_command", required=True)
+
+    p_bank_list = bank_sub.add_parser("list", help="Query bank entries via rebuildable SQLite index")
+    p_bank_list.add_argument("--status", choices=BANK_STATUSES, default=None)
+    p_bank_list.add_argument("--domain", default=None)
+    p_bank_list.add_argument("--tag", default=None)
+    p_bank_list.add_argument("--template", default=None)
+    p_bank_list.add_argument("--json", action="store_true", help="Output machine-readable JSON")
+    p_bank_list.set_defaults(func=cmd_bank)
+
+    p_bank_show = bank_sub.add_parser("show", help="Display a single bank entry JSON")
+    p_bank_show.add_argument("id")
+    p_bank_show.set_defaults(func=cmd_bank)
+
+    p_bank_promote = bank_sub.add_parser(
+        "promote", help="Export a bank draft to content/lessons/<topic>.json while keeping the bank record"
+    )
+    p_bank_promote.add_argument("id")
+    p_bank_promote.add_argument("--topic", default=None, help="Target lesson topic slug (defaults to draft topic)")
+    p_bank_promote.set_defaults(func=cmd_bank)
+
+    p_bank_catalog = bank_sub.add_parser("catalog", help="Print the JSON catalog of all registered visual blocks")
+    p_bank_catalog.set_defaults(func=cmd_bank)
 
     return parser
 
