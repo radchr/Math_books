@@ -8,13 +8,15 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
+import hashlib
+import json
 import shutil
 import subprocess
 import tempfile
 import threading
 import tomllib
 import wave
-from collections.abc import Coroutine, Mapping
+from collections.abc import Callable, Coroutine, Mapping
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -220,16 +222,37 @@ class EdgeTTSProvider:
 
     @property
     def settings(self) -> Mapping[str, object]:
-        return {"rate": self.rate}
+        return {"rate": self.rate, "boundary": "WordBoundary"}
 
     def synthesize_wav(self, text: str, out_wav: Path) -> None:
         import edge_tts
 
         with tempfile.TemporaryDirectory() as tmpdir:
             raw_mp3 = Path(tmpdir) / "edge_raw.mp3"
-            communicate = edge_tts.Communicate(text, self.voice, rate=self.rate)
-            _run_async(communicate.save(str(raw_mp3)))
+            metadata = Path(tmpdir) / "edge_metadata.jsonl"
+            communicate = edge_tts.Communicate(text, self.voice, rate=self.rate, boundary="WordBoundary")
+            _run_async(communicate.save(str(raw_mp3), str(metadata)))
             convert_to_standard_wav(raw_mp3, out_wav)
+            with wave.open(str(out_wav), "rb") as wav:
+                sample_rate = wav.getframerate()
+            checksum = hashlib.sha256(out_wav.read_bytes()).hexdigest()
+            evidence = {
+                "schema_version": 1,
+                "provider": self.provider_id,
+                "advisory": True,
+                "clock_source": "edge_word_boundary_ticks_before_mp3_decode",
+                "ticks_per_second": 10_000_000,
+                "uncertainty": "MP3 encoder/decoder delay is unmeasured; provider ticks are not decoded WAV timestamps",
+                "conversion": "ffmpeg decode/resample to 24000 Hz mono PCM16; no explicit delay correction",
+                "source_audio_sha256": hashlib.sha256(raw_mp3.read_bytes()).hexdigest(),
+                "decoded_wav_sha256": checksum,
+                "wav_sha256": checksum,
+                "sample_rate": sample_rate,
+                "trim_start_samples": 0,
+                "raw_metadata": metadata.read_text(encoding="utf-8"),
+            }
+            _validate_timing_evidence(evidence)
+            timing_sidecar(out_wav).write_text(json.dumps(evidence, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def build_ukrainian_providers(
@@ -281,10 +304,25 @@ class UkrainianFallbackTTS:
         self.pinned_provider: UkrainianVoiceProvider | None = None
         self.fallback_reasons: list[str] = []
 
-    def synthesize(self, text: str, out_wav: Path) -> tuple[str, str]:
+    def pin(self, provider_id: str, voice: str) -> None:
+        """Restore a verified cached identity before generating missing clips."""
+        matching = next((p for p in self.providers if (p.provider_id, p.voice) == (provider_id, voice)), None)
+        if matching is None:
+            raise ValueError("Cached Ukrainian voice is unavailable in the current profile")
+        if self.pinned_provider is not None and self.pinned_provider is not matching:
+            raise ValueError("Cached Ukrainian clips mix provider/voice identities")
+        self.pinned_provider = matching
+
+    def synthesize(
+        self, text: str, out_wav: Path, *, validate: Callable[[Path], None] | None = None
+    ) -> tuple[str, str]:
         """Synthesize text into a 24 kHz mono PCM WAV and return (provider_id, voice)."""
+        from math_books.voiceover_qa import RecognitionError, ReviewRequiredError
+
         if self.pinned_provider is not None:
             self.pinned_provider.synthesize_wav(text, out_wav)
+            if validate is not None:
+                validate(out_wav)
             return self.pinned_provider.provider_id, self.pinned_provider.voice
 
         errors: list[str] = []
@@ -293,12 +331,116 @@ class UkrainianFallbackTTS:
                 with tempfile.TemporaryDirectory() as tmpdir:
                     candidate = Path(tmpdir) / "clip.wav"
                     provider.synthesize_wav(text, candidate)
+                    if validate is not None:
+                        validate(candidate)
                     out_wav.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(candidate, out_wav)
+                    if timing_sidecar(candidate).is_file():
+                        shutil.copy2(timing_sidecar(candidate), timing_sidecar(out_wav))
                 self.pinned_provider = provider
                 return provider.provider_id, provider.voice
+            except (RecognitionError, ReviewRequiredError):
+                raise
             except Exception as error:
                 reason = f"{provider.provider_id}: {type(error).__name__}: {error}"
                 errors.append(reason)
                 self.fallback_reasons.append(reason)
         raise RuntimeError("All Ukrainian TTS providers failed: " + "; ".join(errors))
+
+
+def timing_sidecar(wav_path: Path) -> Path:
+    return wav_path.with_suffix(".provider-timings.json")
+
+
+def _validate_timing_evidence(evidence: dict) -> None:
+    if (
+        evidence.get("schema_version") != 1
+        or evidence.get("advisory") is not True
+        or evidence.get("clock_source") != "edge_word_boundary_ticks_before_mp3_decode"
+        or evidence.get("ticks_per_second") != 10_000_000
+        or not isinstance(evidence.get("uncertainty"), str)
+        or not evidence["uncertainty"]
+        or type(evidence.get("sample_rate")) is not int
+        or evidence["sample_rate"] <= 0
+        or type(evidence.get("trim_start_samples")) is not int
+        or evidence["trim_start_samples"] < 0
+    ):
+        raise ValueError("Malformed advisory provider timing clock")
+    for key in ("source_audio_sha256", "decoded_wav_sha256", "wav_sha256"):
+        value = evidence.get(key)
+        if not isinstance(value, str) or len(value) != 64 or any(c not in "0123456789abcdef" for c in value):
+            raise ValueError("Malformed provider timing audio identity")
+    try:
+        entries = [json.loads(line) for line in evidence["raw_metadata"].splitlines() if line.strip()]
+        words = [entry for entry in entries if entry["type"] == "WordBoundary"]
+        if not words:
+            raise ValueError("Missing WordBoundary metadata")
+        for entry in words:
+            if (
+                type(entry["offset"]) is not int
+                or entry["offset"] < 0
+                or type(entry["duration"]) is not int
+                or entry["duration"] < 0
+                or not isinstance(entry["text"], str)
+                or not entry["text"].strip()
+            ):
+                raise ValueError("Malformed WordBoundary metadata")
+    except (KeyError, TypeError, AttributeError, json.JSONDecodeError) as error:
+        raise ValueError("Malformed raw provider timing metadata") from error
+
+
+def validate_provider_timings(item: Mapping[str, object], audio_dir: Path) -> dict | None:
+    """Validate advisory evidence identity; this does not certify word alignment or content."""
+    if not item.get("provider_timings"):
+        if item.get("timing_required"):
+            raise ValueError("Missing required advisory provider timings")
+        return None
+    try:
+        path = (audio_dir / str(item["provider_timings"])).resolve()
+        wav = (audio_dir / str(item["wav"])).resolve()
+        if not path.is_relative_to(audio_dir.resolve()) or not wav.is_relative_to(audio_dir.resolve()):
+            raise ValueError("Provider timing path escapes audio directory")
+        raw = path.read_bytes()
+        if hashlib.sha256(raw).hexdigest() != item["provider_timings_sha256"]:
+            raise ValueError("Provider timing checksum mismatch")
+        evidence = json.loads(raw)
+        _validate_timing_evidence(evidence)
+        checksum = hashlib.sha256(wav.read_bytes()).hexdigest()
+        if evidence["wav_sha256"] != checksum or item["wav_sha256"] != checksum:
+            raise ValueError("Provider timing WAV identity mismatch")
+        with wave.open(str(wav), "rb") as pcm:
+            if pcm.getframerate() != evidence["sample_rate"]:
+                raise ValueError("Provider timing sample clock mismatch")
+        return evidence
+    except (OSError, KeyError, TypeError, AttributeError, wave.Error) as error:
+        raise ValueError("Missing or malformed advisory provider timing evidence") from error
+
+
+def profile_fingerprint(profile: VoiceProfile, providers: list[UkrainianVoiceProvider]) -> str:
+    """Bind caches to provider settings and local model/config contents."""
+    identities = []
+    for provider in providers:
+        settings = dict(provider.settings)
+        files = {}
+        for key, value in settings.items():
+            if key.endswith("_path") and isinstance(value, (str, Path)):
+                path = Path(value)
+                if path.is_file():
+                    digest = hashlib.sha256()
+                    with path.open("rb") as source:
+                        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                            digest.update(chunk)
+                    files[key] = digest.hexdigest()
+                else:
+                    files[key] = None
+        identities.append(
+            {
+                "id": provider.provider_id,
+                "voice": provider.voice,
+                "kind": provider.kind,
+                "settings": settings,
+                "files": files,
+            }
+        )
+    payload = {"profile": dataclasses.asdict(profile), "providers": identities}
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()

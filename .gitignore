@@ -20,9 +20,11 @@ wheels/
 # Rendered media & Manim caches
 video_*/media/
 videos/video_*/media/
+videos/video_*/*/media/
 test_videos/video_*/media/
 *.mp4
 *.wav
 video_*/audio/.pipeline.lock
 videos/video_*/audio/.pipeline.lock
+videos/video_*/*/audio/.pipeline.lock
 test_videos/video_*/audio/.pipeline.lock

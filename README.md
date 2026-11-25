@@ -100,9 +100,14 @@ Scientific assumptions and reviewed examples: [content review](docs/content-revi
 
 ## Future work
 
+[Three-language support for new videos](docs/three-language-videos.md) is available through
+declarative lessons in `content/lessons/` and `--lang uk|ru|en`. Existing videos are not translated
+or regenerated. The included `language_demo` is an unapproved test example.
+
 [Multilingual video and new-topic roadmap](docs/superpowers/plans/2026-11-24-multilingual-and-general-topics.md)
 tracks Ukrainian/English narration and on-screen text, reusable lessons beyond math and basketball,
-and later draft generation from a topic prompt. These features are planned, not implemented.
+and later draft generation from a topic prompt. Broader scene templates and prompt-based draft
+generation remain future work; see the three-language guide for the implemented scope.
 
 ## Development
 

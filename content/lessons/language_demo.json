@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "topic": "language_demo",
+  "scenes": [
+    {
+      "id": "01_addition",
+      "formula": "7+3=10",
+      "cues": [
+        {
+          "id": "answer_reveal",
+          "target": "formula",
+          "anchor": "start",
+          "occurrence": 1,
+          "phrases": {"uk": "Разом", "ru": "равно", "en": "equals"}
+        }
+      ],
+      "translations": {
+        "uk": {
+          "text": "Сім плюс три. Разом десять.",
+          "title": "Додавання",
+          "body": "Сім очок і ще три очки. Скільки разом?"
+        },
+        "ru": {
+          "text": "Семь плюс три равно десяти.",
+          "title": "Сложение",
+          "body": "Семь очков и ещё три очка. Сколько вместе?"
+        },
+        "en": {
+          "text": "Seven plus three equals ten.",
+          "title": "Addition",
+          "body": "Seven points and three more points. How many in total?"
+        }
+      }
+    }
+  ]
+}

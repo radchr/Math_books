@@ -21,8 +21,15 @@ import httpx
 from dotenv import load_dotenv
 
 from math_books.content_review import require_content_review, script_digest
-from math_books.uk_tts_providers import UkrainianFallbackTTS, build_ukrainian_providers
-from math_books.voiceover_qa import RecognitionError, model_cache, verify_clip
+from math_books.languages import validate_language
+from math_books.uk_tts_providers import (
+    UkrainianFallbackTTS,
+    build_ukrainian_providers,
+    profile_fingerprint,
+    timing_sidecar,
+    validate_provider_timings,
+)
+from math_books.voiceover_qa import RecognitionError, ReviewRequiredError, model_cache, verify_clip
 
 PRIMARY_MODEL = "gemini-3.8-flash-tts"
 SECONDARY_MODEL = "gemini-2.5-flash-preview-tts"
@@ -68,7 +75,11 @@ def request_fingerprint(
     *,
     prompt_revision: int = PROMPT_REVISION,
     provider: str = "gemini",
+    language: str = "ru",
+    provider_config: str | None = None,
+    pin_model: bool = False,
 ) -> str:
+    language = validate_language(language)
     if provider != "gemini":
         request: dict[str, object] = {
             "text": text,
@@ -76,16 +87,40 @@ def request_fingerprint(
             "provider": provider,
             "prompt_revision": prompt_revision,
         }
-        return hashlib.sha256(json.dumps(request, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
-    model = PRIMARY_MODEL if index < 3 else SECONDARY_MODEL
-    alt = SECONDARY_MODEL if model == PRIMARY_MODEL else FALLBACK_MODEL
-    request = {"text": text, "voice": voice, "models": [model, alt], "prompt_revision": prompt_revision}
+    else:
+        model = PRIMARY_MODEL if pin_model or language != "ru" or index < 3 else SECONDARY_MODEL
+        alt = SECONDARY_MODEL if model == PRIMARY_MODEL else FALLBACK_MODEL
+        request = {"text": text, "voice": voice, "models": [model, alt], "prompt_revision": prompt_revision}
+    if language != "ru":
+        request["language"] = language
+    if provider_config is not None:
+        request["provider_config"] = provider_config
+    if pin_model:
+        request["pin_model"] = True
     return hashlib.sha256(json.dumps(request, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
-def valid_request_fingerprints(text: str, voice: str, index: int, *, provider: str = "gemini") -> set[str]:
+def valid_request_fingerprints(
+    text: str,
+    voice: str,
+    index: int,
+    *,
+    provider: str = "gemini",
+    language: str = "ru",
+    provider_config: str | None = None,
+    pin_model: bool = False,
+) -> set[str]:
     return {
-        request_fingerprint(text, voice, index, prompt_revision=rev, provider=provider)
+        request_fingerprint(
+            text,
+            voice,
+            index,
+            prompt_revision=rev,
+            provider=provider,
+            language=language,
+            provider_config=provider_config,
+            pin_model=pin_model,
+        )
         for rev in SUPPORTED_PROMPT_REVISIONS
     }
 
@@ -110,6 +145,12 @@ def trim_wav_edges(path: Path, *, margin_s: float = 0.1) -> None:
     with wave.open(str(path), "wb") as wav:
         wav.setparams(params)
         wav.writeframes(pcm[start * frame_bytes : end * frame_bytes])
+    evidence_path = timing_sidecar(path)
+    if evidence_path.is_file():
+        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        evidence["trim_start_samples"] += start
+        evidence["wav_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+        evidence_path.write_text(json.dumps(evidence, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def synthesize_gemini_tts(
@@ -172,11 +213,17 @@ def generate_topic_tts(
     trim_edges: bool = False,
     provider: str = "gemini",
     uk_profile: str | None = None,
+    language: str | None = None,
+    pin_model: bool = False,
 ) -> list[dict]:
     """Generate (or reuse) WAV files for all scenes of a topic and write manifest.json."""
     project_root = root or Path(__file__).resolve().parents[2]
+    language = validate_language(language if language is not None else ("uk" if provider == "uk" else "ru"))
+    if provider == "uk" and language != "uk":
+        raise ValueError("The uk TTS provider requires language='uk'")
     # Lazy import avoids a registry/engine import cycle while checking the real scene for known topics.
-    from math_books.video_builder import VIDEO_TOPICS
+    from math_books.lessons import lesson_path
+    from math_books.video_builder import VIDEO_TOPICS, get_topic, topic_scenes
 
     topic = next(
         (
@@ -186,12 +233,30 @@ def generate_topic_tts(
         ),
         None,
     )
+    directory = Path(video_dir_name)
+    candidate = directory.parent.name if directory.name in ("uk", "ru", "en") else directory.name
+    candidate = candidate.removeprefix("video_")
+    if topic is None and lesson_path(project_root, candidate).is_file():
+        topic = get_topic(candidate, language, project_root)
+        if directory.as_posix() != topic.video_dir:
+            raise ValueError(f"Future lesson output path must be {topic.video_dir}")
+        if script_digest(scenes) != script_digest(topic_scenes(topic, project_root)):
+            raise ValueError("Caller script differs from localized lesson content")
+        pin_model = True
     if topic is not None and video_dir_name == Path(topic.video_dir).name:
         video_dir_name = topic.video_dir
-    if topic is not None and script_digest(scenes) != script_digest(importlib.import_module(topic.tts_module).SCENES):
+    if (
+        topic is not None
+        and topic.lesson_file is None
+        and script_digest(scenes) != script_digest(importlib.import_module(topic.tts_module).SCENES)
+    ):
         raise ValueError("Caller script differs from the current registered narration")
     require_content_review(
-        scenes, video_dir_name, project_root, expected_scene_file=topic.scene_file if topic else None
+        scenes,
+        video_dir_name,
+        project_root,
+        expected_scene_file=topic.scene_file if topic else None,
+        **({"language": language} if language != "ru" else {}),
     )
     load_dotenv(project_root / ".env")
     api_key = os.getenv("GEMINI_API_KEY")
@@ -218,13 +283,85 @@ def generate_topic_tts(
             project_root,
             provider=provider,
             uk_profile=uk_profile,
+            language=language,
+            pin_model=pin_model,
         )
 
 
+def _write_immutable_evidence(path: Path, data: bytes) -> None:
+    """Create evidence once; a collision must contain exactly the same bytes."""
+    try:
+        with path.open("xb") as output:
+            output.write(data)
+    except FileExistsError:
+        if path.read_bytes() != data:
+            raise ReviewRequiredError(f"Review evidence collision; existing file was not overwritten: {path}") from None
+
+
+def _retain_review_required(
+    wav_path: Path, text: str, report: dict, audio_dir: Path, language: str
+) -> tuple[Path, Path]:
+    """Retain unapproved speech and its full diagnostic report outside production clips."""
+    pcm = wav_path.read_bytes()
+    audio_hash = hashlib.sha256(pcm).hexdigest()
+    text_hash = hashlib.sha256(text.encode()).hexdigest()
+    report_bytes = json.dumps(report, sort_keys=True, ensure_ascii=False).encode()
+    report_hash = hashlib.sha256(report_bytes).hexdigest()
+    policy_hash = report.get("policy_sha256")
+    if not isinstance(policy_hash, str) or not re.fullmatch(r"[a-f0-9]{64}", policy_hash):
+        policy_hash = report_hash
+    directory = audio_dir / "review_required"
+    directory.mkdir(exist_ok=True)
+    stem = f"{audio_hash}-{text_hash[:16]}-{policy_hash[:16]}"
+    retained_wav = directory / f"{stem}.wav"
+    retained_report = directory / f"{stem}-{report_hash[:16]}.json"
+    evidence = {
+        "evidence_only": True,
+        "purpose": "Unapproved voiceover retained for manual review; never a production approval",
+        "language": language,
+        "wav": str(retained_wav),
+        "wav_sha256": audio_hash,
+        "text_sha256": text_hash,
+        "source_report": report,
+    }
+    _write_immutable_evidence(retained_wav, pcm)
+    _write_immutable_evidence(
+        retained_report, json.dumps(evidence, sort_keys=True, ensure_ascii=False, indent=2).encode()
+    )
+    return retained_wav, retained_report
+
+
 def _check_clip_qa(
-    wav_path: Path, text: str, scene_id: str, audio_dir: Path, project_root: Path, *, refresh: bool = False
+    wav_path: Path,
+    text: str,
+    scene_id: str,
+    audio_dir: Path,
+    project_root: Path,
+    *,
+    refresh: bool = False,
+    language: str = "ru",
+    quality_check: bool = False,
 ) -> None:
-    report = verify_clip(wav_path, text, audio_dir / "qa", model_cache(project_root), refresh=refresh)
+    report = verify_clip(
+        wav_path,
+        text,
+        audio_dir / "qa",
+        model_cache(project_root),
+        refresh=refresh,
+        **({"language": language} if language != "ru" else {}),
+        **({"quality_check": True} if quality_check else {}),
+    )
+    if report.get("status") == "needs_review":
+        try:
+            retained_wav, retained_report = _retain_review_required(wav_path, text, report, audio_dir, language)
+        except (OSError, TypeError, ValueError) as error:
+            raise ReviewRequiredError(
+                f"Voiceover needs review for {scene_id}; unable to retain evidence in "
+                f"{audio_dir / 'review_required'}: {error}"
+            ) from error
+        raise ReviewRequiredError(
+            f"Voiceover needs review for {scene_id}; retained WAV: {retained_wav}; evidence report: {retained_report}"
+        )
     if not report["ok"]:
         issues = "; ".join(report.get("comparison", {}).get("issues", report.get("issues", ["bad speech"])))
         raise ValueError(f"Voiceover verification failed for {scene_id}: {issues}")
@@ -243,22 +380,73 @@ def _generate_batch(
     *,
     provider: str = "gemini",
     uk_profile: str | None = None,
+    language: str = "ru",
+    pin_model: bool = False,
 ) -> list[dict]:
     meta: list[dict] = []
     uk_service: UkrainianFallbackTTS | None = None
     effective_voice = voice
+    config_fingerprint = None
+    pinned_gemini_model: str | None = None
     if provider == "uk":
         profile, uk_providers = build_ukrainian_providers(project_root, profile_id=uk_profile)
         uk_service = UkrainianFallbackTTS(uk_providers, profile_id=profile.profile_id)
         effective_voice = profile.profile_id
+        config_fingerprint = profile_fingerprint(profile, uk_providers)
+
+    def fingerprints(scene, idx):
+        return (
+            request_fingerprint(
+                scene["text"],
+                effective_voice,
+                idx,
+                provider=provider,
+                language=language,
+                provider_config=config_fingerprint,
+                pin_model=pin_model,
+            ),
+            valid_request_fingerprints(
+                scene["text"],
+                effective_voice,
+                idx,
+                provider=provider,
+                language=language,
+                provider_config=config_fingerprint,
+                pin_model=pin_model,
+            ),
+        )
+
+    # Inspect every reusable clip first: a missing early scene must respect a later cached voice.
+    if (uk_service is not None or language != "ru" or pin_model) and not force:
+        for idx, scene in enumerate(scenes):
+            try:
+                cache = json.loads((audio_dir / f"{scene['id']}.cache.json").read_text(encoding="utf-8"))
+                cached_wav = audio_dir / cache["wav"]
+                reusable = (
+                    cache["fingerprint"] in fingerprints(scene, idx)[1]
+                    and cache["wav_sha256"] == hashlib.sha256(cached_wav.read_bytes()).hexdigest()
+                )
+                identity = (cache["model"], cache.get("actual_voice", cache["voice"]))
+                if reusable:
+                    validate_provider_timings(cache, audio_dir)
+            except (OSError, ValueError, KeyError, TypeError, AttributeError):
+                continue
+            if reusable:
+                if uk_service is not None:
+                    uk_service.pin(*identity)
+                else:
+                    if pinned_gemini_model is not None and pinned_gemini_model != identity[0]:
+                        raise ValueError("Cached Gemini clips mix model identities")
+                    if identity[1] != voice:
+                        raise ValueError("Cached Gemini voice differs from requested voice")
+                    pinned_gemini_model = identity[0]
 
     for idx, scene in enumerate(scenes):
         wav_path = audio_dir / f"{scene['id']}.wav"
         cache_path = wav_path.with_suffix(".cache.json")
-        model = PRIMARY_MODEL if idx < 3 else SECONDARY_MODEL
+        model = PRIMARY_MODEL if pin_model or language != "ru" or idx < 3 else SECONDARY_MODEL
         alt = SECONDARY_MODEL if model == PRIMARY_MODEL else FALLBACK_MODEL
-        fingerprint = request_fingerprint(scene["text"], effective_voice, idx, provider=provider)
-        valid_fingerprints = valid_request_fingerprints(scene["text"], effective_voice, idx, provider=provider)
+        fingerprint, valid_fingerprints = fingerprints(scene, idx)
         try:
             cache = json.loads(cache_path.read_text(encoding="utf-8"))
             wav_path = audio_dir / cache.get("wav", wav_path.name)
@@ -266,6 +454,8 @@ def _generate_batch(
                 cache["fingerprint"] in valid_fingerprints
                 and cache["wav_sha256"] == hashlib.sha256(wav_path.read_bytes()).hexdigest()
             )
+            if valid:
+                validate_provider_timings(cache, audio_dir)
         except (OSError, ValueError, KeyError, TypeError, AttributeError):
             cache, valid = {}, False
         if valid and not force:
@@ -273,14 +463,36 @@ def _generate_batch(
             status = "cached"
             already_trimmed = bool(cache.get("trimmed"))
             if not (trim_edges and not already_trimmed):
-                _check_clip_qa(wav_path, scene["text"], scene["id"], audio_dir, project_root)
+                _check_clip_qa(
+                    wav_path,
+                    scene["text"],
+                    scene["id"],
+                    audio_dir,
+                    project_root,
+                    language=language,
+                    **({"quality_check": True} if pin_model else {}),
+                )
         elif provider == "uk":
             assert uk_service is not None
             staged_wav = staging / f"{scene['id']}.wav"
-            actual_provider_id, actual_voice = uk_service.synthesize(scene["text"], staged_wav)
-            if trim_edges:
-                trim_wav_edges(staged_wav)
-            _check_clip_qa(staged_wav, scene["text"], scene["id"], audio_dir, project_root, refresh=True)
+
+            def validate_candidate(candidate, scene=scene):
+                if trim_edges:
+                    trim_wav_edges(candidate)
+                _check_clip_qa(
+                    candidate,
+                    scene["text"],
+                    scene["id"],
+                    audio_dir,
+                    project_root,
+                    refresh=True,
+                    language=language,
+                    **({"quality_check": True} if pin_model else {}),
+                )
+
+            actual_provider_id, actual_voice = uk_service.synthesize(
+                scene["text"], staged_wav, validate=validate_candidate
+            )
             dur = wav_duration(staged_wav)
             if dur <= 0:
                 raise ValueError(f"Empty audio generated for {scene['id']}")
@@ -290,6 +502,16 @@ def _generate_batch(
                 "model": actual_provider_id,
                 "voice": effective_voice,
                 "actual_voice": actual_voice,
+                "provider_config": config_fingerprint,
+                **({"pin_model": True} if pin_model else {}),
+                **({"quality_check": True} if pin_model else {}),
+                **(
+                    {"timing_required": True}
+                    if pin_model
+                    and uk_service.pinned_provider is not None
+                    and uk_service.pinned_provider.kind == "edge"
+                    else {}
+                ),
                 "wav_sha256": hashlib.sha256(staged_wav.read_bytes()).hexdigest(),
                 **({"trimmed": True} if trim_edges else {}),
             }
@@ -303,6 +525,9 @@ def _generate_batch(
             for extra in (FALLBACK_MODEL, PRIMARY_MODEL, SECONDARY_MODEL):
                 if extra not in candidate_models:
                     candidate_models.append(extra)
+            if pinned_gemini_model is not None:
+                # Retry transient failures without changing an established batch voice/model.
+                candidate_models = [pinned_gemini_model] * 3
             actual_model = model
             last_error: Exception | None = None
             for attempt_idx, candidate in enumerate(candidate_models[:3]):
@@ -313,10 +538,19 @@ def _generate_batch(
                     synthesize_gemini_tts(scene["text"], staged_wav, api_key, model=candidate, voice=voice)
                     if trim_edges:
                         trim_wav_edges(staged_wav)
-                    _check_clip_qa(staged_wav, scene["text"], scene["id"], audio_dir, project_root, refresh=True)
+                    _check_clip_qa(
+                        staged_wav,
+                        scene["text"],
+                        scene["id"],
+                        audio_dir,
+                        project_root,
+                        refresh=True,
+                        language=language,
+                        **({"quality_check": True} if pin_model else {}),
+                    )
                     last_error = None
                     break
-                except (RecognitionError, FatalTTSError):
+                except (RecognitionError, ReviewRequiredError, FatalTTSError):
                     raise
                 except (RuntimeError, ValueError, httpx.HTTPError) as error:
                     last_error = error
@@ -324,6 +558,8 @@ def _generate_batch(
                         break
             if last_error is not None:
                 raise last_error
+            if language != "ru" or pin_model:
+                pinned_gemini_model = actual_model
             dur = wav_duration(staged_wav)
             if dur <= 0:
                 raise ValueError(f"Empty audio generated for {scene['id']}")
@@ -333,6 +569,8 @@ def _generate_batch(
                 "voice": voice,
                 "wav_sha256": hashlib.sha256(staged_wav.read_bytes()).hexdigest(),
                 **({"trimmed": True} if trim_edges else {}),
+                **({"pin_model": True} if pin_model else {}),
+                **({"quality_check": True} if pin_model else {}),
             }
             status = "generated"
             already_trimmed = trim_edges
@@ -343,23 +581,53 @@ def _generate_batch(
             staged_wav = staging / f"{scene['id']}.wav"
             if status == "cached":
                 shutil.copy2(wav_path, staged_wav)
+                if cache.get("provider_timings"):
+                    shutil.copy2(audio_dir / cache["provider_timings"], timing_sidecar(staged_wav))
                 if trim_edges:
                     trim_wav_edges(staged_wav)
                     cache["trimmed"] = True
-                _check_clip_qa(staged_wav, scene["text"], scene["id"], audio_dir, project_root)
+                _check_clip_qa(
+                    staged_wav,
+                    scene["text"],
+                    scene["id"],
+                    audio_dir,
+                    project_root,
+                    language=language,
+                    **({"quality_check": True} if pin_model else {}),
+                )
             dur = wav_duration(staged_wav)
             checksum = hashlib.sha256(staged_wav.read_bytes()).hexdigest()
             clip_fp = str(cache.get("fingerprint", fingerprint))
             wav_path = audio_dir / "clips" / f"{scene['id']}-{clip_fp[:12]}-{checksum[:12]}.wav"
             wav_path.parent.mkdir(exist_ok=True)
             cache.update(wav=str(wav_path.relative_to(audio_dir)), wav_sha256=checksum)
+            evidence_path = timing_sidecar(staged_wav)
+            if evidence_path.is_file():
+                evidence_checksum = hashlib.sha256(evidence_path.read_bytes()).hexdigest()
+                published_evidence = wav_path.with_name(
+                    f"{wav_path.stem}-{evidence_checksum[:12]}.provider-timings.json"
+                )
+                shutil.copy2(evidence_path, published_evidence)
+                cache.update(
+                    provider_timings=str(published_evidence.relative_to(audio_dir)),
+                    provider_timings_sha256=evidence_checksum,
+                )
             staged_cache = staging / cache_path.name
             staged_cache.write_text(json.dumps(cache, indent=2), encoding="utf-8")
             staged_wav.replace(wav_path)
             staged_cache.replace(cache_path)
 
+        validate_provider_timings(cache, audio_dir)
+        if pin_model and cache.get("quality_check") is not True:
+            cache["quality_check"] = True
+            staged_cache = staging / cache_path.name
+            staged_cache.write_text(json.dumps(cache, indent=2), encoding="utf-8")
+            staged_cache.replace(cache_path)
+
         print(f"[{scene['id']}] ({status}) -> {wav_path.name} ({dur:.2f}s)")
-        meta.append({**scene, **cache, "wav": str(wav_path.relative_to(audio_dir)), "duration": dur})
+        meta.append(
+            {**scene, **cache, "language": language, "wav": str(wav_path.relative_to(audio_dir)), "duration": dur}
+        )
 
     staged_manifest = staging / "manifest.json"
     staged_manifest.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")

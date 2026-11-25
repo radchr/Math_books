@@ -16,8 +16,12 @@ from fractions import Fraction
 from pathlib import Path
 
 from math_books.content_review import check_content_review, require_content_review
+from math_books.cue_timeline import event_timeline, validate_event_log
+from math_books.languages import validate_language
+from math_books.lessons import discover_lessons, lesson_digest, lesson_path, load_lesson
 from math_books.tts_engine import audio_lock, valid_request_fingerprints, wav_duration
-from math_books.voiceover_qa import require_manifest_quality, verify_manifest
+from math_books.uk_tts_providers import build_ukrainian_providers, profile_fingerprint, validate_provider_timings
+from math_books.voiceover_qa import require_manifest_quality, timing_snapshot, verify_manifest
 
 
 @dataclasses.dataclass(frozen=True)
@@ -28,6 +32,8 @@ class VideoTopic:
     scene_class: str
     output_name: str
     tts_module: str
+    language: str = "ru"
+    lesson_file: str | None = None
 
 
 TEST_VIDEOS_DIR = "test_videos"
@@ -97,9 +103,88 @@ def project_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+def get_topic(key: str, language: str = "ru", root: Path | None = None) -> VideoTopic:
+    validate_language(language)
+    base = root or project_root()
+    if key in VIDEO_TOPICS:
+        if language != "ru":
+            raise ValueError(f"Legacy topic {key!r} has no {language} translation; create a new lesson")
+        return VIDEO_TOPICS[key]
+    path = lesson_path(base, key)
+    if not path.is_file():
+        raise ValueError(f"Unknown topic {key!r}; add content/lessons/{key}.json")
+    load_lesson(base, key, language)
+    return VideoTopic(
+        key,
+        f"videos/video_{key}/{language}",
+        "src/math_books/localized_lesson_scene.py",
+        "LocalizedLessonScene",
+        f"{key}.mp4",
+        "",
+        language,
+        str(path.relative_to(base)),
+    )
+
+
+def available_topics(root: Path, language: str = "ru") -> dict[str, VideoTopic]:
+    validate_language(language)
+    topics = dict(VIDEO_TOPICS) if language == "ru" else {}
+    for key in discover_lessons(root):
+        if key in VIDEO_TOPICS:
+            raise ValueError(f"New lesson collides with legacy topic: {key}")
+        topics[key] = get_topic(key, language, root)
+    return topics
+
+
+def topic_scenes(topic: VideoTopic, base: Path) -> list[dict]:
+    if topic.lesson_file is not None:
+        return load_lesson(base, topic.key, topic.language)
+    return importlib.import_module(topic.tts_module).SCENES
+
+
 def require_topic_review(topic: VideoTopic, base: Path) -> dict:
-    scenes = importlib.import_module(topic.tts_module).SCENES
-    return require_content_review(scenes, topic.video_dir, base, expected_scene_file=topic.scene_file)
+    scenes = topic_scenes(topic, base)
+    return require_content_review(
+        scenes, topic.video_dir, base, expected_scene_file=topic.scene_file, language=topic.language
+    )
+
+
+def _expected_audio_fingerprints(topic: VideoTopic, base: Path, item: dict, index: int) -> set[str]:
+    language = validate_language(item.get("language", "ru"))
+    if language != topic.language or (topic.lesson_file and "language" not in item):
+        raise ValueError("Audio manifest language does not match lesson")
+    if topic.lesson_file and not item.get("pin_model"):
+        raise ValueError("Future lesson audio requires a pinned batch voice/model")
+    if topic.lesson_file and item.get("quality_check") is not True:
+        raise ValueError("Future lesson audio requires current acoustic QA; refresh TTS")
+    provider = item.get("provider", "gemini")
+    if provider not in ("gemini", "uk"):
+        raise ValueError("Unsupported audio provider")
+    config = None
+    if provider == "uk":
+        if language != "uk":
+            raise ValueError("Ukrainian provider requires uk language")
+        profile, providers = build_ukrainian_providers(base, profile_id=item["voice"])
+        config = profile_fingerprint(profile, providers)
+        if item.get("provider_config") != config:
+            raise ValueError("Ukrainian voice profile changed; regenerate audio")
+    return valid_request_fingerprints(
+        item["text"],
+        item["voice"],
+        index,
+        provider=provider,
+        language=language,
+        provider_config=config,
+        pin_model=item.get("pin_model", False),
+    )
+
+
+def _validate_batch_identity(topic: VideoTopic, manifest: list[dict]) -> None:
+    if (
+        topic.lesson_file
+        and len({(s.get("provider", "gemini"), s["model"], s.get("actual_voice", s["voice"])) for s in manifest}) != 1
+    ):
+        raise ValueError("Future lesson audio mixes provider/model/voice identities")
 
 
 def validate_topic_audio(topic: VideoTopic, base: Path) -> list[dict]:
@@ -107,14 +192,13 @@ def validate_topic_audio(topic: VideoTopic, base: Path) -> list[dict]:
     require_topic_review(topic, base)
     path = base / topic.video_dir / "audio/manifest.json"
     manifest = json.loads(path.read_text(encoding="utf-8"))
-    scenes = importlib.import_module(topic.tts_module).SCENES
+    scenes = topic_scenes(topic, base)
     if [(s["id"], s["text"]) for s in manifest] != [(s["id"], s["text"]) for s in scenes]:
         raise ValueError(f"Stale script/audio manifest for {topic.key}; run math-books tts {topic.key}")
     for index, item in enumerate(manifest):
         if not all(key in item for key in ("fingerprint", "wav_sha256", "model", "voice")):
             raise ValueError(f"Untrusted legacy audio for {topic.key}; regenerate with math-books tts {topic.key}")
-        provider = item.get("provider", "gemini")
-        if item["fingerprint"] not in valid_request_fingerprints(item["text"], item["voice"], index, provider=provider):
+        if item["fingerprint"] not in _expected_audio_fingerprints(topic, base, item, index):
             raise ValueError(f"Stale audio provenance for {item['id']}; regenerate TTS")
         wav = path.parent / item["wav"]
         duration = float(item["duration"])
@@ -122,6 +206,8 @@ def validate_topic_audio(topic: VideoTopic, base: Path) -> list[dict]:
             raise ValueError(f"Stale audio duration for {item['id']}; refresh TTS")
         if "wav_sha256" in item and hashlib.sha256(wav.read_bytes()).hexdigest() != item["wav_sha256"]:
             raise ValueError(f"Stale audio checksum for {item['id']}; refresh TTS")
+        validate_provider_timings(item, path.parent)
+    _validate_batch_identity(topic, manifest)
     require_manifest_quality(path, manifest, base)
     return manifest
 
@@ -129,8 +215,10 @@ def validate_topic_audio(topic: VideoTopic, base: Path) -> list[dict]:
 def verify_topic_audio(topic: VideoTopic, base: Path, *, refresh: bool = False) -> dict:
     """Verify topic audio manifest provenance and local ASR voiceover QA."""
     path = base / topic.video_dir / "audio/manifest.json"
-    scenes = importlib.import_module(topic.tts_module).SCENES
-    editorial = check_content_review(scenes, topic.video_dir, base, expected_scene_file=topic.scene_file)
+    scenes = topic_scenes(topic, base)
+    editorial = check_content_review(
+        scenes, topic.video_dir, base, expected_scene_file=topic.scene_file, language=topic.language
+    )
     if not editorial["ok"]:
         return {
             "topic": topic.key,
@@ -149,10 +237,7 @@ def verify_topic_audio(topic: VideoTopic, base: Path, *, refresh: bool = False) 
                     raise ValueError(
                         f"Untrusted legacy audio for {topic.key}; regenerate with math-books tts {topic.key}"
                     )
-                provider = item.get("provider", "gemini")
-                if item["fingerprint"] not in valid_request_fingerprints(
-                    item["text"], item["voice"], index, provider=provider
-                ):
+                if item["fingerprint"] not in _expected_audio_fingerprints(topic, base, item, index):
                     raise ValueError(f"Stale audio provenance for {item['id']}; regenerate TTS")
                 wav = path.parent / item["wav"]
                 duration = float(item["duration"])
@@ -160,25 +245,42 @@ def verify_topic_audio(topic: VideoTopic, base: Path, *, refresh: bool = False) 
                     raise ValueError(f"Stale audio duration for {item['id']}; refresh TTS")
                 if hashlib.sha256(wav.read_bytes()).hexdigest() != item["wav_sha256"]:
                     raise ValueError(f"Stale audio checksum for {item['id']}; refresh TTS")
+                validate_provider_timings(item, path.parent)
+            _validate_batch_identity(topic, manifest)
             qa = verify_manifest(path, manifest, base, refresh=refresh)
             return {"topic": topic.key, "path": str(path), "editorial": editorial, **qa}
         except (OSError, ValueError, KeyError, TypeError) as error:
             return {"topic": topic.key, "path": str(path), "ok": False, "editorial": editorial, "issues": [str(error)]}
 
 
-def render_fingerprint(topic: VideoTopic, base: Path, manifest: list[dict]) -> str:
+def render_fingerprint(
+    topic: VideoTopic, base: Path, manifest: list[dict], *, snapshot: dict | None = None, events: dict | None = None
+) -> str:
     """Bind the silent render to its scene, shared UI and exact audio timing."""
     digest = hashlib.sha256()
     for path in (base / topic.scene_file, base / "src/math_books/video_ui.py", base / "src/math_books/lesson_math.py"):
         digest.update(path.read_bytes())
     digest.update(json.dumps([(s["id"], s["duration"]) for s in manifest]).encode())
+    if topic.lesson_file:
+        digest.update(topic.language.encode())
+        digest.update(lesson_digest(topic_scenes(topic, base)).encode())
+        for name in ("languages.py", "lessons.py", "cue_timeline.py"):
+            digest.update((base / "src/math_books" / name).read_bytes())
+        if snapshot is None:
+            snapshot = timing_snapshot(base / topic.video_dir / "audio/manifest.json", manifest, base)
+        digest.update(json.dumps(snapshot, sort_keys=True).encode())
+        if events is None:
+            events = event_timeline(topic_scenes(topic, base), manifest, snapshot, topic.language)
+        digest.update(json.dumps(events, sort_keys=True).encode())
     return digest.hexdigest()
 
 
 def topic_status_summary(topic: VideoTopic, base: Path) -> dict:
     """Return a unified readiness summary across editorial review, audio QA, final video, and test archive."""
-    scenes = importlib.import_module(topic.tts_module).SCENES
-    editorial = check_content_review(scenes, topic.video_dir, base, expected_scene_file=topic.scene_file)
+    scenes = topic_scenes(topic, base)
+    editorial = check_content_review(
+        scenes, topic.video_dir, base, expected_scene_file=topic.scene_file, language=topic.language
+    )
     review_state = "approved" if editorial["ok"] else "blocked"
 
     manifest_path = base / topic.video_dir / "audio" / "manifest.json"
@@ -222,8 +324,10 @@ def topic_status_summary(topic: VideoTopic, base: Path) -> dict:
 
 
 def verify_topic_video(topic: VideoTopic, base: Path, *, check_silence: bool = True) -> dict:
-    scenes = importlib.import_module(topic.tts_module).SCENES
-    editorial = check_content_review(scenes, topic.video_dir, base, expected_scene_file=topic.scene_file)
+    scenes = topic_scenes(topic, base)
+    editorial = check_content_review(
+        scenes, topic.video_dir, base, expected_scene_file=topic.scene_file, language=topic.language
+    )
     if not editorial["ok"]:
         return {
             "path": str(base / topic.video_dir / topic.output_name),
@@ -245,7 +349,12 @@ def _verify_topic_video(topic: VideoTopic, base: Path, *, check_silence: bool = 
     try:
         manifest = validate_topic_audio(topic, base)
         provenance = json.loads(video.with_suffix(".build.json").read_text())
-        fingerprint = render_fingerprint(topic, base, manifest)
+        snapshot = None
+        events = None
+        if topic.lesson_file:
+            snapshot = timing_snapshot(base / topic.video_dir / "audio/manifest.json", manifest, base)
+            events = event_timeline(topic_scenes(topic, base), manifest, snapshot, topic.language)
+        fingerprint = render_fingerprint(topic, base, manifest, snapshot=snapshot, events=events)
         audio_hashes = [
             hashlib.sha256((base / topic.video_dir / "audio" / s["wav"]).read_bytes()).hexdigest() for s in manifest
         ]
@@ -255,6 +364,8 @@ def _verify_topic_video(topic: VideoTopic, base: Path, *, check_silence: bool = 
             or provenance["video_sha256"] != hashlib.sha256(video.read_bytes()).hexdigest()
         ):
             raise ValueError("Stale final video: source, audio or output changed; rebuild")
+        if events is not None:
+            validate_event_log(events, provenance.get("events", []))
     except (OSError, ValueError, KeyError, TypeError) as error:
         report["issues"].append(f"Build provenance failed: {error}")
     report["ok"] = not report["issues"]
@@ -310,10 +421,12 @@ def concat_audio_from_manifest(
         return wf.getnframes() / float(wf.getframerate())
 
 
-def render_silent_video(topic: VideoTopic, root: Path | None = None) -> Path:
+def render_silent_video(
+    topic: VideoTopic, root: Path | None = None, *, snapshot: dict | None = None, events: dict | None = None
+) -> Path:
     """Render silent 9:16 Manim video and return path to the rendered MP4."""
     base = root or project_root()
-    validate_topic_audio(topic, base)
+    manifest = validate_topic_audio(topic, base)
     manifest_path = (base / topic.video_dir / "audio" / "manifest.json").resolve()
     media_dir = base / topic.video_dir / "media"
     silent_name = f"{topic.key}_silent.mp4"
@@ -328,11 +441,34 @@ def render_silent_video(topic: VideoTopic, root: Path | None = None) -> Path:
         topic.scene_class,
     ]
     env = {**os.environ, "MATH_BOOKS_MANIFEST_PATH": str(manifest_path)}
-    subprocess.run(cmd, check=True, cwd=base, env=env)
+    event_records = []
+    if topic.lesson_file is not None:
+        env.update(MATH_BOOKS_LANGUAGE=topic.language, MATH_BOOKS_LESSON_PATH=str((base / topic.lesson_file).resolve()))
+        # Snapshot once; Manim must consume the exact word evidence bound by provenance.
+        if snapshot is None:
+            snapshot = timing_snapshot(manifest_path, manifest, base)
+        if events is None:
+            events = event_timeline(topic_scenes(topic, base), manifest, snapshot, topic.language)
+        with tempfile.TemporaryDirectory(dir=manifest_path.parent) as staging:
+            snapshot_path = Path(staging) / "timings.json"
+            snapshot_path.write_text(json.dumps(snapshot), encoding="utf-8")
+            env["MATH_BOOKS_TIMING_SNAPSHOT_PATH"] = str(snapshot_path)
+            events_path = Path(staging) / "events.json"
+            log_path = Path(staging) / "event_log.json"
+            events_path.write_text(json.dumps(events), encoding="utf-8")
+            env.update(MATH_BOOKS_EVENT_TIMELINE_PATH=str(events_path), MATH_BOOKS_EVENT_LOG_PATH=str(log_path))
+            subprocess.run(cmd, check=True, cwd=base, env=env)
+            if any(events.values()):
+                event_records = json.loads(log_path.read_text(encoding="utf-8"))
+                validate_event_log(events, event_records)
+    else:
+        subprocess.run(cmd, check=True, cwd=base, env=env)
 
     matches = sorted(media_dir.rglob(silent_name), key=lambda p: p.stat().st_mtime, reverse=True)
     if not matches:
         raise FileNotFoundError(f"Rendered silent video {silent_name} not found in {media_dir}")
+    if topic.lesson_file:
+        matches[0].with_suffix(".events.json").write_text(json.dumps(event_records), encoding="utf-8")
     return matches[0]
 
 
@@ -486,26 +622,26 @@ def extract_preview_frames(
     return frames
 
 
-def build_video(topic_key: str, *, skip_render: bool = False, root: Path | None = None) -> dict:
-    if topic_key not in VIDEO_TOPICS:
-        raise KeyError(f"Unknown topic: {topic_key}")
+def build_video(topic_key: str, *, skip_render: bool = False, root: Path | None = None, language: str = "ru") -> dict:
     base = root or project_root()
-    require_topic_review(VIDEO_TOPICS[topic_key], base)
-    with audio_lock(base / VIDEO_TOPICS[topic_key].video_dir / "audio"):
-        return _build_video(topic_key, skip_render=skip_render, root=base)
+    topic = get_topic(topic_key, language, base)
+    require_topic_review(topic, base)
+    with audio_lock(base / topic.video_dir / "audio"):
+        return _build_video(topic_key, skip_render=skip_render, root=base, language=language)
 
 
-def _build_video(topic_key: str, *, skip_render: bool = False, root: Path | None = None) -> dict:
+def _build_video(topic_key: str, *, skip_render: bool = False, root: Path | None = None, language: str = "ru") -> dict:
     """Run full video build: render silent Manim -> concat WAV -> mux -> verify."""
-    if topic_key not in VIDEO_TOPICS:
-        raise KeyError(f"Unknown topic '{topic_key}'. Available: {', '.join(VIDEO_TOPICS)}")
-
     base = root or project_root()
-    topic = VIDEO_TOPICS[topic_key]
+    topic = get_topic(topic_key, language, base)
     manifest_path = base / topic.video_dir / "audio" / "manifest.json"
     out_mp4 = base / topic.video_dir / topic.output_name
     manifest = validate_topic_audio(topic, base)
-    fingerprint = render_fingerprint(topic, base, manifest)
+    snapshot = timing_snapshot(manifest_path, manifest, base) if topic.lesson_file else None
+    events = (
+        event_timeline(topic_scenes(topic, base), manifest, snapshot, topic.language) if snapshot is not None else {}
+    )
+    fingerprint = render_fingerprint(topic, base, manifest, snapshot=snapshot, events=events)
 
     if skip_render:
         media_dir = base / topic.video_dir / "media"
@@ -525,12 +661,17 @@ def _build_video(topic_key: str, *, skip_render: bool = False, root: Path | None
         ):
             raise ValueError("Stale or untracked silent render; rebuild without --skip-render")
     else:
-        silent_mp4 = render_silent_video(topic, root=base)
+        silent_mp4 = render_silent_video(topic, root=base, snapshot=snapshot, events=events)
         silent_mp4.with_suffix(".render.json").write_text(
             json.dumps(
                 {"fingerprint": fingerprint, "video_sha256": hashlib.sha256(silent_mp4.read_bytes()).hexdigest()}
             )
         )
+
+    event_records = []
+    if topic.lesson_file and any(events.values()):
+        event_records = json.loads(silent_mp4.with_suffix(".events.json").read_text(encoding="utf-8"))
+        validate_event_log(events, event_records)
 
     with tempfile.TemporaryDirectory(dir=out_mp4.parent) as tmpdir:
         full_wav = Path(tmpdir) / f"{topic.key}_full_audio.wav"
@@ -546,6 +687,7 @@ def _build_video(topic_key: str, *, skip_render: bool = False, root: Path | None
                     hashlib.sha256((manifest_path.parent / s["wav"]).read_bytes()).hexdigest() for s in manifest
                 ],
                 "video_sha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
+                **({"events": event_records} if topic.lesson_file else {}),
             }
             staged_provenance = Path(tmpdir) / "build.json"
             staged_provenance.write_text(json.dumps(provenance, indent=2))

@@ -1,4 +1,4 @@
-"""Conservative Russian transcript comparison, not pronunciation certification."""
+"""Conservative multilingual transcript comparison, not pronunciation certification."""
 
 from __future__ import annotations
 
@@ -11,6 +11,9 @@ from functools import lru_cache
 import pymorphy3
 import snowballstemmer
 from num2words import num2words
+
+from math_books.languages import validate_language
+from math_books.multilingual_numbers import normalize as normalize_multilingual
 
 
 @lru_cache(maxsize=1)
@@ -63,11 +66,24 @@ def _integer_at(words: list[str], start: int) -> tuple[int, int]:
     return total + group, index
 
 
-def normalize_spoken_text(text: str) -> list[str]:
+def normalize_spoken_text(text: str, language: str = "ru") -> list[str]:
     """Normalize forms, percentages and equivalent Russian decimal/fraction numbers."""
+    validate_language(language)
     if not isinstance(text, str):
         raise ValueError("Transcript and expected narration must be strings")
+    if language != "ru":
+        return normalize_multilingual(text, language)
     text = unicodedata.normalize("NFKC", text).lower().replace("ё", "е").replace("%", " процентов ")
+    for symbol, spoken in (
+        (">=", "больше равно"),
+        ("<=", "меньше равно"),
+        ("≥", "больше равно"),
+        ("≤", "меньше равно"),
+        (">", "больше"),
+        ("<", "меньше"),
+        ("=", "равно"),
+    ):
+        text = text.replace(symbol, f" {spoken} ")
     text = re.sub(
         r"\b(двух|трех)очков[а-я]*\b",
         lambda m: "2 очковый" if m.group(1) == "двух" else "3 очковый",
@@ -79,7 +95,15 @@ def normalize_spoken_text(text: str) -> list[str]:
     text = re.sub(r"\bсут(ых|ые|ая|ой|ую)\b", r"сот\1", text)
     text = re.sub(r"\bбрас(ок|ка|ку|ком|ке|ки|ков|кам|ками|ках)\b", r"брос\1", text)
     text = text.replace("+", " плюс ").replace("−", " минус ").replace("×", " умножить ")
-    text = re.sub(r"-(?=\s*\d)", " минус ", text)
+    for symbol, spoken in (
+        ("-", "минус"),
+        ("*", "умножить"),
+        ("⋅", "умножить"),
+        ("·", "умножить"),
+        ("/", "разделить"),
+        ("÷", "разделить"),
+    ):
+        text = text.replace(symbol, f" {spoken} ")
 
     def spell(match):
         number = match.group().replace(",", ".")
@@ -135,7 +159,7 @@ def normalize_spoken_text(text: str) -> list[str]:
 @lru_cache(maxsize=1)
 def _protected_words() -> set[str]:
     words = (
-        "не нет ни без независимый зависимый ровно хотя минимум максимум больше меньше всегда никогда "
+        "равно не нет ни без независимый зависимый ровно хотя минимум максимум больше меньше всегда никогда "
         "возможный невозможный до после перед от только кроме вместо плюс минус умножить вычесть разделить "
         "процент пункт очко атака бросок попадание промах метр секунда градус рубль год раз клетка серия "
         "половина треть четверть средний сумма угол треугольник орел решка вероятность шанс доля исход переход"
@@ -170,19 +194,25 @@ def _alignment(expected: list[str], actual: list[str]) -> list[dict]:
     return edits[::-1]
 
 
-def compare_transcript(expected_text: str, transcript: str) -> dict:
+def compare_transcript(expected_text: str, transcript: str, language: str = "ru") -> dict:
     """Reject additions/deletions and protected changes; tolerate only tiny ASR substitutions."""
-    expected, actual = normalize_spoken_text(expected_text), normalize_spoken_text(transcript)
+    expected, actual = normalize_spoken_text(expected_text, language), normalize_spoken_text(transcript, language)
     edits = _alignment(expected, actual)
     insertions = sum(edit["kind"] == "insertion" for edit in edits)
     deletions = sum(edit["kind"] == "deletion" for edit in edits)
     substitutions = sum(edit["kind"] == "substitution" for edit in edits)
     wer = len(edits) / max(1, len(expected))
     known_latin = set(re.findall(r"[a-z]+", expected_text.lower()))
-    foreign = sorted(set(re.findall(r"[a-z]+", transcript.lower())) - known_latin)
+    foreign = (
+        sorted(set(re.findall(r"[а-яёіїєґ]+", transcript.lower())))
+        if language == "en"
+        else sorted(set(re.findall(r"[a-z]+", transcript.lower())) - known_latin)
+    )
 
     def protected(tokens):
-        return [token for token in tokens if token.startswith("#number:") or token in _protected_words()]
+        return [
+            token for token in tokens if language != "ru" or token.startswith("#number:") or token in _protected_words()
+        ]
 
     issues = []
     if not expected or not actual:

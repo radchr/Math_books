@@ -43,6 +43,16 @@ This workspace contains tools and pipelines for:
   - `anti-slop-review/SKILL.md` — Scientific and pedagogical anti-slop audit protocol before recording `content_reviews/<topic>.json` approval
 
 ## Critical Project Conventions
+
+### Future multilingual lessons
+
+New declarative lessons use `content/lessons/<topic>.json` with complete `uk/ru/en`
+translations and CLI `--lang`. See `docs/three-language-videos.md`. New media lives in
+`videos/video_<topic>/<lang>/`; reviews in `content_reviews/<lang>/<topic>.json`.
+Never translate or regenerate the seven legacy topics unless explicitly requested.
+Future QA is language-aware; the legacy Python scenes remain Russian. Do not infer
+speech language from provider alone or reuse approval between languages.
+
 1. **Always use `uv run`** when executing Python or `manim` commands.
 2. **Manim + Audio Sync:** Do NOT use `self.add_sound()` inside `Scene` (Manim caching drops audio on subsequent scenes). Always render a silent `.mp4` and mux the `wave`-concatenated `.wav` track via `ffmpeg`. Use `self.run_segment(segment_fn, duration)` and `self._pad(duration)` (which measures authoritative `self.renderer.time` and runs `self.check_frame_bounds()`), use `self.word_timestamp(scene_id, target_word, fallback=..., after_s=...)` for intra-scene word-level answer reveals from `audio/qa/*.json`, and fade out scenes with `FadeOut(Group(*self.mobjects), run_time=0.4)`.
 3. **LaTeX & Cyrillic:** Never pass Cyrillic text inside `MathTex()` (standard `latex` fails on Cyrillic). Use `Text(..., font="DejaVu Sans")` for Russian labels and `MathTex()` strictly for pure math/Latin/Greek formulas.

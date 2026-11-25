@@ -2,7 +2,7 @@
 name: feynman-manim-composer
 description: >-
   Composes pedagogically rigorous 9:16 vertical video screenplays and dual-column storyboards
-  (Voiceover <-> Manim Action) for Math_books STEM-basketball shorts, combining Richard Feynman's
+  (Voiceover and Manim Action) for Math_books STEM-basketball shorts, combining Richard Feynman's
   intuition-first method, Bruner's Concreteness Fading (CRA), and Mayer's Cognitive Load principles.
   Use when asked to "напиши сценарій для Manim", "створи розкадровку", "сплануй анімацію",
   "storyboard", or design a new Math_books video before coding the scene.
@@ -49,7 +49,7 @@ description: >-
 
 | Час | Закадровий голос (TTS-ready) | Дія на екрані (Manim 9:16) |
 |---|---|---|
-| 0:00–0:04 | «Три секунди до сирени! Твоя команда програє два очки...» | `make_scoreboard`, `make_half_court`, `FadeIn` бейджа `make_badge`. |
+| 0:00–0:04 | «Десять секунд до сирени! Твоя команда програє три очки...» | `make_scoreboard`, `make_half_court`, `FadeIn` бейджа `make_badge`. |
 | 0:04–0:10 | «Бити складну трійку одразу чи розіграти комбінацію?» | Дві стрілки планів А і Б; підсвітка активної траєкторії. |
 ```
 
@@ -57,7 +57,7 @@ description: >-
 
 ## Правила когнітивної ясності та технічні обмеження `Math_books`
 
-- **Ліміт робочої пам'яті (Свеллер):** не більше **3–4 активних елементів** на екрані одночасно.
+- **Орієнтир когнітивного навантаження:** одночасно пояснюй приблизно **3–4 змістові групи**, а не лімітуй кількість `Mobject`. Сітка зі ста клітинок може бути однією групою. Це робоча рекомендація, а не універсальний закон.
 - **Проста мова озвучки (Separate meaning from notation):**
   - Екран (`MathTex`) показує формулу, а голос пояснює **ідею** людською мовою (без механічного читання символів і без LaTeX/цифр у тексті TTS).
   - Усі числа, дроби й відсотки — словами; в українській — природні звороти (*«половина»*, *«три з десяти»*); у російській — обов'язково `ё`.
@@ -65,6 +65,12 @@ description: >-
 - **Сумісність із нашим Manim-пайплайном:**
   - Шрифт тексту: `FONT` (`DejaVu Sans` із `video_ui.py`), **ніколи** не передавай кирилицю в `MathTex()`.
   - Полотно: `1080×1920`, безпечна зона `|x| <= 4.35`, `y ∈ [-6.15, +7.45]`, ширина тексту `≤ 7.6`.
-  - Усі числа на екрані мають рахуватися з однієї чистої Python-функції на `fractions.Fraction`, а не дублюватися літералами.
+  - Числа озвучки й екрана мають спиратися на спільну перевірювану модель; для раціональної арифметики використовуй `fractions.Fraction`, для фізики — перевірені одиниці й точність чисельного методу.
   - Ніякого `self.add_sound()`; аудіо зводиться окремо через `math-books build <topic>`.
 - **Перехід до реалізації:** після затвердження розкадровки користувачем переходь до скілу `stem-basketball-video` (код → `content_reviews/<topic>.json` → TTS → `build` → `verify --frames`).
+
+Для майбутніх тримовних уроків розкадровка має містити `uk`, `ru`, `en` narration
+та екранні рядки за стабільними scene ID. Формули лишаються спільними. Формат,
+мовні шляхи й `--lang` описані в `docs/three-language-videos.md`; старі Python-сцени
+не перекладаються автоматично. `word_timestamp` для нових уроків споживає
+перевірений snapshot, а не довільний JSON за часом зміни.

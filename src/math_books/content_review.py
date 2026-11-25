@@ -16,7 +16,9 @@ from fractions import Fraction
 from pathlib import Path
 from urllib.parse import urlparse
 
+from math_books.languages import SUPPORTED_LANGUAGES, validate_language
 from math_books.lesson_math import coin_followup_examples
+from math_books.lessons import lesson_digest, lesson_path, load_lesson
 
 REVIEW_CRITERIA = {
     "scientific": ("evidence_matches_claims", "calculations_correct", "assumptions_and_limits", "no_overclaim"),
@@ -102,11 +104,34 @@ def _scene_path(root: Path, relative: str) -> Path:
     return path
 
 
-def make_review_template(topic: str, scenes: Sequence[dict[str, str]], scene_file: str, root: Path) -> dict:
+def review_path(root: Path, topic: str, language: str = "ru") -> Path:
+    validate_language(language)
+    if language != "ru" or lesson_path(root, topic).is_file():
+        return root / "content_reviews" / language / f"{topic}.json"
+    return root / "content_reviews" / f"{topic}.json"
+
+
+def _topic_key(video_dir_name: str) -> str:
+    path = Path(video_dir_name)
+    if path.name in SUPPORTED_LANGUAGES:
+        path = path.parent
+    return path.name.removeprefix("video_")
+
+
+def make_review_template(
+    topic: str, scenes: Sequence[dict[str, str]], scene_file: str, root: Path, *, language: str = "ru"
+) -> dict:
     """Produce a pending dossier; an editor must supply evidence and actual judgments."""
+    validate_language(language)
+    localized = lesson_path(root, topic).is_file()
     return {
         "schema_version": 1,
         "topic": topic,
+        **(
+            {"language": language, "localized_content_sha256": lesson_digest(load_lesson(root, topic, language))}
+            if localized
+            else ({"language": language} if language != "ru" else {})
+        ),
         "script_sha256": script_digest(scenes),
         "scene_file": scene_file,
         "scene_sha256": hashlib.sha256(_scene_path(root, scene_file).read_bytes()).hexdigest(),
@@ -215,7 +240,7 @@ def _index(items: object, name: str, *, key: str = "id") -> dict[str, dict]:
     return indexed
 
 
-def _validate(dossier: dict, scenes, topic, root, expected_scene_file):
+def _validate(dossier: dict, scenes, topic, root, expected_scene_file, language="ru"):
     _require(bool(scenes), "Script must contain at least one scene")
     _require(isinstance(dossier, dict), "Review dossier must be a JSON object")
     _require(
@@ -223,6 +248,14 @@ def _validate(dossier: dict, scenes, topic, root, expected_scene_file):
         "Unsupported review schema_version",
     )
     _require(dossier.get("topic") == topic, "Review topic does not match requested topic")
+    _require(dossier.get("language", "ru") == language, "Review language does not match requested language")
+    if lesson_path(root, topic).is_file():
+        localized = load_lesson(root, topic, language)
+        _require(
+            dossier.get("localized_content_sha256") == lesson_digest(localized),
+            "Localized content changed; review narration and screen captions again",
+        )
+        _require(script_digest(scenes) == script_digest(localized), "Caller script differs from localized content")
     _require(dossier.get("script_sha256") == script_digest(scenes), "Script changed; review the current narration")
     scene_file = dossier.get("scene_file")
     if expected_scene_file is not None:
@@ -312,15 +345,22 @@ def _validate(dossier: dict, scenes, topic, root, expected_scene_file):
 
 
 def check_content_review(
-    scenes: Sequence[dict[str, str]], video_dir_name: str, root: Path, *, expected_scene_file: str | None = None
+    scenes: Sequence[dict[str, str]],
+    video_dir_name: str,
+    root: Path,
+    *,
+    expected_scene_file: str | None = None,
+    language: str = "ru",
 ) -> dict:
-    topic = Path(video_dir_name).name.removeprefix("video_")
+    validate_language(language)
+    topic = _topic_key(video_dir_name)
     report = {
         "topic": topic,
         "ok": False,
         "issues": [],
         "math_checks": [],
-        "review_path": str(root / "content_reviews" / f"{topic}.json"),
+        "review_path": str(review_path(root, topic, language)),
+        "language": language,
         "scope": "Recorded editorial judgments and deterministic checks; not independent fact verification.",
     }
     try:
@@ -336,7 +376,7 @@ def check_content_review(
         if isinstance(dossier, dict):
             # Reviewers need the current digest even while a dossier is still pending.
             report["dossier_sha256"] = dossier_digest(dossier)
-        report["math_checks"] = _validate(dossier, scenes, topic, root, expected_scene_file)
+        report["math_checks"] = _validate(dossier, scenes, topic, root, expected_scene_file, language)
         report["reviewers"] = {
             key: {field: dossier["reviews"][key][field] for field in ("reviewer", "reviewer_type", "reviewed_at")}
             for key in REVIEW_CRITERIA
@@ -349,9 +389,16 @@ def check_content_review(
 
 
 def require_content_review(
-    scenes: Sequence[dict[str, str]], video_dir_name: str, root: Path, *, expected_scene_file: str | None = None
+    scenes: Sequence[dict[str, str]],
+    video_dir_name: str,
+    root: Path,
+    *,
+    expected_scene_file: str | None = None,
+    language: str = "ru",
 ) -> dict:
-    report = check_content_review(scenes, video_dir_name, root, expected_scene_file=expected_scene_file)
+    report = check_content_review(
+        scenes, video_dir_name, root, expected_scene_file=expected_scene_file, language=language
+    )
     if not report["ok"]:
         raise ValueError("Content review blocked production: " + "; ".join(report["issues"]))
     return report

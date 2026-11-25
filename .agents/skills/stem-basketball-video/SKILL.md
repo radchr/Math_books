@@ -9,6 +9,22 @@ description: >-
 
 # STEM-Basketball Video Production Skill
 
+## Future three-language lessons
+
+For new videos requiring Ukrainian, Russian and English, follow
+[the multilingual guide](../../../docs/three-language-videos.md): create
+`content/lessons/<topic>.json` with complete `uk/ru/en` narration and captions,
+then use `review`, `tts`, `build`, `verify-audio`, `verify` with `--lang`.
+The shared `LocalizedLessonScene` renders translated cards before layout.
+Artifacts and approvals are language-specific. Missing translations fail closed.
+The legacy custom Python-scene recipe below remains available for Russian topics;
+it does not automatically translate custom Manim labels. Do not regenerate old
+videos to add languages unless the user explicitly requests it.
+
+ASR defaults to `small` for Ukrainian and `base` for Russian/English, with explicit
+validated model overrides. Do not weaken numeric/negation checks to mask ASR errors.
+Before approval, apply `anti-slop-review` to the actual localized narration and captions.
+
 Create 55–70 second vertical (`1080×1920`, `30 fps`) popular-science videos connecting **basketball** (NBA, streetball, court tactics, shooting physics, analytics) with **mathematics** (geometry, algebra, probability, game theory, statistics) for a 12-year-old boy.
 
 ---
@@ -116,7 +132,7 @@ Before generating any TTS audio or rendering Manim video, the topic must pass th
    - **Gemini (`--provider gemini`, default):** Uses [tts_engine.py](../../../src/math_books/tts_engine.py): sends only raw narration text (`PROMPT_REVISION = 2`), rotates `gemini-3.8-flash-tts` (clips 1–3) → `gemini-2.5-flash-preview-tts` / `gemini-3.8-flash-lite-tts` (clips 4–5), and retries transient `httpx.HTTPError` / rate limits while failing fast on 400/401/403.
    - **Ukrainian Fallback (`--provider uk`):** Uses [uk_tts_providers.py](../../../src/math_books/uk_tts_providers.py) and [voice_profiles.toml](../../../src/math_books/voice_profiles.toml) (`StyleTTS2` → local `Piper` → `Edge TTS`), pins the first working provider for the entire batch (never mixing voices mid-video), and normalizes every clip to 24 kHz mono 16-bit PCM WAV.
    - Writes immutable WAV files under `videos/video_<topic>/audio/clips/<id>-<fp>-<sha>.wav`, per-scene `.cache.json`, and `videos/video_<topic>/audio/manifest.json`.
-   - **Automatic Local ASR Gate (`voiceover_qa.py`):** Every generated (or cached) clip is transcribed locally via `faster-whisper` (`base`, int8 CPU) and compared against the script (`spoken_text.py`). Any English prompt leak, repeated take, or altered number/negation/math term triggers an automatic fallback retry and blocks publication if still invalid.
+   - **Automatic Local ASR Gate (`voiceover_qa.py`):** Every generated (or cached) clip is transcribed locally with the selected language/model and compared against the script. Unexpected added speech, repeated takes or altered numbers/negation/math terms block publication. English itself is valid for `en`. A retry must preserve the pinned batch identity; ASR unavailability must not trigger paid synthesis retries.
 2. **Explicit Audio Verification & Listening QC:**
    ```bash
    uv run math-books verify-audio <topic>
