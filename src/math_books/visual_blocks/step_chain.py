@@ -123,9 +123,22 @@ def build(theme: VisualTheme, language: str, row: Mapping[str, Any]) -> dict[str
         formula = MathTex(row["formula"], font_size=40, color=theme.text_primary)
         if formula.width > 7.4:
             formula.scale_to_fit_width(7.4)
+        if formula.height > 1.4:
+            formula.scale_to_fit_height(1.4)
         formula.move_to(DOWN * 3.65)
         objects["formula"] = formula
     return objects
+
+
+def _available_targets(params: Mapping[str, Any], formula: str) -> frozenset[str]:
+    targets = {"title", "body"}
+    for idx in range(len(params.get("steps", []))):
+        targets.add(f"step_{idx + 1}")
+    if params.get("result"):
+        targets.add("result")
+    if formula:
+        targets.add("formula")
+    return frozenset(targets)
 
 
 def register() -> None:
@@ -142,5 +155,6 @@ def register() -> None:
             validate_params=validate_params,
             build=build,
             source_file=Path(__file__),
+            available_targets=_available_targets,
         )
     )

@@ -100,11 +100,13 @@ def cmd_review(args: argparse.Namespace) -> int:
 def cmd_verify_audio(args: argparse.Namespace) -> int:
     root = project_root()
     language = getattr(args, "lang", "ru")
-    topics = available_topics(root, language)
-    targets = list(topics) if args.topic == "all" else [args.topic]
+    targets = list(available_topics(root, language)) if args.topic == "all" else [args.topic]
     all_ok = True
     for key in targets:
-        report = verify_topic_audio(get_topic(key, language, root), root, refresh=args.refresh)
+        try:
+            report = verify_topic_audio(get_topic(key, language, root), root, refresh=args.refresh)
+        except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
+            report = {"topic": key, "ok": False, "issues": [str(error)]}
         print(f"[{key}] {json.dumps(report, ensure_ascii=False)}")
         all_ok = all_ok and report["ok"]
     return 0 if all_ok else 1
@@ -118,15 +120,14 @@ def cmd_build(args: argparse.Namespace) -> int:
 def cmd_verify(args: argparse.Namespace) -> int:
     root = project_root()
     language = getattr(args, "lang", "ru")
-    topics = available_topics(root, language)
-    targets = list(topics) if args.topic == "all" else [args.topic]
+    targets = list(available_topics(root, language)) if args.topic == "all" else [args.topic]
     all_ok = True
     for key in targets:
         topic = get_topic(key, language, root)
         mp4 = root / topic.video_dir / topic.output_name
         try:
             report = verify_topic_video(topic, root, check_silence=not args.no_silence)
-        except (OSError, ValueError, subprocess.CalledProcessError) as error:
+        except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
             report = {"path": str(mp4), "ok": False, "issues": [str(error)]}
         print(f"[{key}] {json.dumps(report, ensure_ascii=False)}")
         if args.frames and report["ok"]:
@@ -374,7 +375,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
     try:
         status = args.func(args)
-    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError, httpx.HTTPError) as error:
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError, httpx.HTTPError) as error:
         print(f"Error: {error}", file=sys.stderr)
         status = 1
     raise SystemExit(status)

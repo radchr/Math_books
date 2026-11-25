@@ -74,7 +74,7 @@ def validate_bank_entry(data: object, expected_id: str | None = None) -> dict[st
     """Validate a bank JSON entry (idea/draft/promoted/produced/parked)."""
     if not isinstance(data, dict):
         raise ValueError("Bank entry must be a JSON object")
-    if data.get("schema_version") != 1:
+    if type(data.get("schema_version")) is not int or data.get("schema_version") != 1:
         raise ValueError("Unsupported bank entry schema_version")
     entry_id = data.get("id")
     if not isinstance(entry_id, str) or not _ID_RE.fullmatch(entry_id):
@@ -160,69 +160,83 @@ def sync_bank_index(root: Path) -> Path:
         if row is not None and row[0] == sig:
             return db_path
 
-        conn.executescript(
-            """
-            DROP TABLE IF EXISTS entry_tags;
-            DROP TABLE IF EXISTS entry_templates;
-            DROP TABLE IF EXISTS entries;
-            CREATE TABLE entries (
-                id TEXT PRIMARY KEY,
-                status TEXT NOT NULL,
-                domain TEXT NOT NULL,
-                theme TEXT NOT NULL,
-                min_age INTEGER NOT NULL,
-                max_age INTEGER NOT NULL,
-                title_uk TEXT NOT NULL,
-                title_ru TEXT NOT NULL,
-                title_en TEXT NOT NULL,
-                summary TEXT NOT NULL,
-                promoted_topic TEXT
-            );
-            CREATE TABLE entry_tags (
-                entry_id TEXT NOT NULL,
-                tag TEXT NOT NULL,
-                PRIMARY KEY (entry_id, tag)
-            );
-            CREATE TABLE entry_templates (
-                entry_id TEXT NOT NULL,
-                template TEXT NOT NULL,
-                PRIMARY KEY (entry_id, template)
-            );
-            """
-        )
-        for path in files:
-            entry = validate_bank_entry(
+        parsed_entries = [
+            validate_bank_entry(
                 json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=_unique_keys),
                 expected_id=path.stem,
             )
-            promoted = entry.get("promoted_lesson")
-            promoted_topic = promoted.get("topic") if isinstance(promoted, dict) else None
+            for path in files
+        ]
+
+        with conn:
             conn.execute(
                 """
-                INSERT INTO entries
-                (id, status, domain, theme, min_age, max_age, title_uk, title_ru, title_en, summary, promoted_topic)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    entry["id"],
-                    entry["status"],
-                    entry["domain"],
-                    entry.get("theme", "neutral_dark"),
-                    entry["audience"]["min_age"],
-                    entry["audience"]["max_age"],
-                    entry["title"]["uk"],
-                    entry["title"]["ru"],
-                    entry["title"]["en"],
-                    entry["summary"],
-                    promoted_topic,
-                ),
+                CREATE TABLE IF NOT EXISTS entries (
+                    id TEXT PRIMARY KEY,
+                    status TEXT NOT NULL,
+                    domain TEXT NOT NULL,
+                    theme TEXT NOT NULL,
+                    min_age INTEGER NOT NULL,
+                    max_age INTEGER NOT NULL,
+                    title_uk TEXT NOT NULL,
+                    title_ru TEXT NOT NULL,
+                    title_en TEXT NOT NULL,
+                    summary TEXT NOT NULL,
+                    promoted_topic TEXT
+                )
+                """
             )
-            for tag in set(entry.get("tags", [])):
-                conn.execute("INSERT INTO entry_tags (entry_id, tag) VALUES (?, ?)", (entry["id"], tag))
-            for template in _templates_in_entry(entry):
-                conn.execute("INSERT INTO entry_templates (entry_id, template) VALUES (?, ?)", (entry["id"], template))
-        conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('signature', ?)", (sig,))
-        conn.commit()
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS entry_tags (
+                    entry_id TEXT NOT NULL,
+                    tag TEXT NOT NULL,
+                    PRIMARY KEY (entry_id, tag)
+                )
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS entry_templates (
+                    entry_id TEXT NOT NULL,
+                    template TEXT NOT NULL,
+                    PRIMARY KEY (entry_id, template)
+                )
+                """
+            )
+            conn.execute("DELETE FROM entry_tags")
+            conn.execute("DELETE FROM entry_templates")
+            conn.execute("DELETE FROM entries")
+            for entry in parsed_entries:
+                promoted = entry.get("promoted_lesson")
+                promoted_topic = promoted.get("topic") if isinstance(promoted, dict) else None
+                conn.execute(
+                    """
+                    INSERT INTO entries
+                    (id, status, domain, theme, min_age, max_age, title_uk, title_ru, title_en, summary, promoted_topic)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        entry["id"],
+                        entry["status"],
+                        entry["domain"],
+                        entry.get("theme", "neutral_dark"),
+                        entry["audience"]["min_age"],
+                        entry["audience"]["max_age"],
+                        entry["title"]["uk"],
+                        entry["title"]["ru"],
+                        entry["title"]["en"],
+                        entry["summary"],
+                        promoted_topic,
+                    ),
+                )
+                for tag in set(entry.get("tags", [])):
+                    conn.execute("INSERT INTO entry_tags (entry_id, tag) VALUES (?, ?)", (entry["id"], tag))
+                for template in _templates_in_entry(entry):
+                    conn.execute(
+                        "INSERT INTO entry_templates (entry_id, template) VALUES (?, ?)", (entry["id"], template)
+                    )
+            conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('signature', ?)", (sig,))
     finally:
         conn.close()
     return db_path

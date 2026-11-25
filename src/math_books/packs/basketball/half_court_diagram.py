@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from math_books.themes import CONTENT_MAX_WIDTH, VisualTheme
+from math_books.themes import CONTENT_MAX_WIDTH, VisualTheme, validate_color_role
 from math_books.visual_blocks import (
     VisualBlockSpec,
     localized_label,
@@ -39,6 +39,8 @@ def validate_params(params: Mapping[str, Any], translations: Mapping[str, Mappin
         ids.add(ident)
         _validate_coord(marker.get("x"), f"{context}.markers[{ident}].x", -3.2, 3.2)
         _validate_coord(marker.get("y"), f"{context}.markers[{ident}].y", -2.6, 2.4)
+        if "color" in marker and marker["color"] is not None:
+            validate_color_role(marker["color"], f"{context}.markers[{ident}].color")
         require_localized_label(translations, ident, context)
 
     arrows = params.get("arrows", [])
@@ -50,6 +52,8 @@ def validate_params(params: Mapping[str, Any], translations: Mapping[str, Mappin
         src, dst = arrow.get("from"), arrow.get("to")
         if src not in ids or dst not in ids or src == dst:
             raise ValueError(f"{context}: arrow {index} must connect two distinct marker ids")
+        if "color" in arrow and arrow["color"] is not None:
+            validate_color_role(arrow["color"], f"{context}.arrows[{index}].color")
 
 
 def build(theme: VisualTheme, _language: str, row: Mapping[str, Any]) -> dict[str, Any]:
@@ -122,9 +126,22 @@ def build(theme: VisualTheme, _language: str, row: Mapping[str, Any]) -> dict[st
         formula = MathTex(row["formula"], font_size=42, color=theme.text_primary)
         if formula.width > 7.4:
             formula.scale_to_fit_width(7.4)
+        if formula.height > 1.5:
+            formula.scale_to_fit_height(1.5)
         formula.move_to(DOWN * 3.8)
         objects["formula"] = formula
     return objects
+
+
+def _available_targets(params: Mapping[str, Any], formula: str) -> frozenset[str]:
+    targets = {"title", "body", "court"}
+    if params.get("markers"):
+        targets.add("markers")
+    if params.get("arrows"):
+        targets.add("arrows")
+    if formula:
+        targets.add("formula")
+    return frozenset(targets)
 
 
 def register() -> None:
@@ -143,5 +160,6 @@ def register() -> None:
             validate_params=validate_params,
             build=build,
             source_file=Path(__file__),
+            available_targets=_available_targets,
         )
     )

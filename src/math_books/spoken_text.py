@@ -95,6 +95,7 @@ def normalize_spoken_text(text: str, language: str = "ru") -> list[str]:
     text = re.sub(r"\bтрячк[а-я]*\b", "3 очка", text)
     text = re.sub(r"\bдвачк[а-я]*\b", "2 очка", text)
     text = re.sub(r"\b([1-9]0)-х\b", lambda m: f"{int(m.group(1)) // 10} десятых", text)
+    text = re.sub(r"(?<=[^\W\d_]{2})-(?=[^\W\d_]{2})", " ", text)
     text = re.sub(r"\bсут(ых|ые|ая|ой|ую)\b", r"сот\1", text)
     text = re.sub(r"\bбрас(ок|ка|ку|ком|ке|ки|ков|кам|ками|ках)\b", r"брос\1", text)
     text = text.replace("+", " плюс ").replace("−", " минус ").replace("×", " умножить ")

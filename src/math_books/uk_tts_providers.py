@@ -157,18 +157,33 @@ class StyleTTS2Provider:
     def _extract_audio_path(self, result: object) -> Path:
         if isinstance(result, (str, Path)):
             return Path(result)
-        if isinstance(result, (list, tuple)):
-            for item in result:
-                try:
-                    return self._extract_audio_path(item)
-                except TypeError:
-                    continue
         if isinstance(result, dict):
+            path_val = result.get("path")
+            if isinstance(path_val, (str, Path)):
+                return Path(path_val)
+            candidates: list[Path] = []
             for item in result.values():
                 try:
-                    return self._extract_audio_path(item)
+                    candidates.append(self._extract_audio_path(item))
                 except TypeError:
                     continue
+            for candidate in candidates:
+                if candidate.is_file():
+                    return candidate
+            if candidates:
+                return candidates[0]
+        if isinstance(result, (list, tuple)):
+            candidates = []
+            for item in result:
+                try:
+                    candidates.append(self._extract_audio_path(item))
+                except TypeError:
+                    continue
+            for candidate in candidates:
+                if candidate.is_file():
+                    return candidate
+            if candidates:
+                return candidates[0]
         raise TypeError(f"StyleTTS2 returned no audio path: {type(result).__name__}")
 
     def synthesize_wav(self, text: str, out_wav: Path) -> None:
@@ -189,16 +204,31 @@ class StyleTTS2Provider:
 class PiperProvider:
     kind = "piper"
 
-    def __init__(self, provider_id: str, voice: str, *, model_path: Path, config_path: Path) -> None:
+    def __init__(
+        self,
+        provider_id: str,
+        voice: str,
+        *,
+        model_path: Path,
+        config_path: Path,
+        model_spec: str | None = None,
+        config_spec: str | None = None,
+    ) -> None:
         self.provider_id = provider_id
         self.voice = voice
         self.model_path = model_path
         self.config_path = config_path
+        self.model_spec = model_spec or model_path.as_posix()
+        self.config_spec = config_spec or config_path.as_posix()
         self._voice_model: Any = None
 
     @property
     def settings(self) -> Mapping[str, object]:
-        return {"model_path": self.model_path.as_posix(), "config_path": self.config_path.as_posix()}
+        return {"model_path": self.model_spec, "config_path": self.config_spec}
+
+    @property
+    def resolved_paths(self) -> Mapping[str, Path]:
+        return {"model_path": self.model_path, "config_path": self.config_path}
 
     def synthesize_wav(self, text: str, out_wav: Path) -> None:
         if not self.model_path.is_file() or not self.config_path.is_file():
@@ -280,12 +310,16 @@ def build_ukrainian_providers(
                 )
             )
         elif cfg.kind == "piper":
+            model_rel = str(opts["model_path"])
+            config_rel = str(opts["config_path"])
             providers.append(
                 PiperProvider(
                     cfg.provider_id,
                     cfg.voice,
-                    model_path=project_root / str(opts["model_path"]),
-                    config_path=project_root / str(opts["config_path"]),
+                    model_path=project_root / model_rel,
+                    config_path=project_root / config_rel,
+                    model_spec=model_rel,
+                    config_spec=config_rel,
                 )
             )
         elif cfg.kind == "edge":
@@ -421,10 +455,11 @@ def profile_fingerprint(profile: VoiceProfile, providers: list[UkrainianVoicePro
     identities = []
     for provider in providers:
         settings = dict(provider.settings)
+        resolved_map = getattr(provider, "resolved_paths", {})
         files = {}
         for key, value in settings.items():
             if key.endswith("_path") and isinstance(value, (str, Path)):
-                path = Path(value)
+                path = Path(resolved_map[key]) if key in resolved_map else Path(value)
                 if path.is_file():
                     digest = hashlib.sha256()
                     with path.open("rb") as source:

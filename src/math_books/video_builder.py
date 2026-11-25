@@ -93,7 +93,9 @@ def _validate_audio_manifest(topic: VideoTopic, base: Path) -> list[dict]:
             raise ValueError(f"Untrusted legacy audio for {topic.key}; regenerate with math-books tts {topic.key}")
         if item["fingerprint"] not in _expected_audio_fingerprints(topic, base, item, index):
             raise ValueError(f"Stale audio provenance for {item['id']}; regenerate TTS")
-        wav = path.parent / item["wav"]
+        wav = (path.parent / item["wav"]).resolve()
+        if not wav.is_relative_to(path.parent.resolve()):
+            raise ValueError(f"Audio clip path escapes audio directory: {item['wav']!r}")
         duration = float(item["duration"])
         if not math.isfinite(duration) or duration <= 0 or abs(wav_duration(wav) - duration) > 0.001:
             raise ValueError(f"Stale audio duration for {item['id']}; refresh TTS")
@@ -127,6 +129,22 @@ def verify_topic_audio(topic: VideoTopic, base: Path, *, refresh: bool = False) 
             "editorial": editorial,
             "issues": ["Content review blocked audio verification: " + "; ".join(editorial["issues"])],
         }
+    if _is_music_only(scenes):
+        try:
+            track_id = str(scenes[0]["music_track"])
+            track_path, track_meta = resolve_music_track(base, track_id)
+            return {
+                "topic": topic.key,
+                "path": str(track_path),
+                "ok": True,
+                "audio_mode": "music_only",
+                "music_track": track_id,
+                "music_sha256": track_meta["sha256"],
+                "editorial": editorial,
+                "issues": [],
+            }
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            return {"topic": topic.key, "path": str(path), "ok": False, "editorial": editorial, "issues": [str(error)]}
     with audio_lock(base / topic.video_dir / "audio"):
         try:
             manifest = _validate_audio_manifest(topic, base)
@@ -158,6 +176,19 @@ def render_fingerprint(
 
         for source_file in visual_source_files():
             digest.update(source_file.read_bytes())
+        for scene in scenes:
+            visual = scene.get("visual")
+            if isinstance(visual, dict) and visual.get("template") == "image_stage":
+                img_rel = visual.get("params", {}).get("image")
+                if isinstance(img_rel, str):
+                    img_path = (base / img_rel).resolve()
+                    if not (img_path.is_relative_to(base.resolve()) and img_path.is_file()):
+                        repo_root = project_root().resolve()
+                        img_path = (repo_root / img_rel).resolve()
+                        if not (img_path.is_relative_to(repo_root) and img_path.is_file()):
+                            raise FileNotFoundError(f"Missing image_stage asset: {img_rel}")
+                    digest.update(img_rel.encode())
+                    digest.update(img_path.read_bytes())
         if _is_music_only(scenes):
             track_id = str(scenes[0]["music_track"])
             track_path, track_meta = resolve_music_track(base, track_id)
@@ -285,7 +316,8 @@ def topic_status_summary(topic: VideoTopic, base: Path) -> dict:
         # Concurrent removal or inaccessible lock state must not crash list.
         audio_state = video_state = "busy"
 
-    test_mp4 = base / TEST_VIDEOS_DIR / Path(topic.video_dir).name / topic.output_name
+    rel_video_dir = topic.video_dir.removeprefix(f"{PRODUCTION_VIDEOS_DIR}/")
+    test_mp4 = base / TEST_VIDEOS_DIR / rel_video_dir / topic.output_name
     return {
         "topic": topic.key,
         "scene_class": topic.scene_class,
@@ -293,9 +325,7 @@ def topic_status_summary(topic: VideoTopic, base: Path) -> dict:
         "review": review_state,
         "audio": audio_state,
         "video": video_state,
-        "test_archive": f"{TEST_VIDEOS_DIR}/{Path(topic.video_dir).name}/{topic.output_name}"
-        if test_mp4.is_file()
-        else None,
+        "test_archive": f"{TEST_VIDEOS_DIR}/{rel_video_dir}/{topic.output_name}" if test_mp4.is_file() else None,
         "ready": False,
         "verification": "not_run",
     }
@@ -379,8 +409,11 @@ def concat_audio_from_manifest(
     if not manifest:
         raise ValueError(f"Empty audio manifest: {manifest_path}")
 
-    wav_paths = [manifest_path.parent / item["wav"] for item in manifest]
+    audio_root = manifest_path.parent.resolve()
+    wav_paths = [(manifest_path.parent / item["wav"]).resolve() for item in manifest]
     for p in wav_paths:
+        if not p.is_relative_to(audio_root):
+            raise ValueError(f"Audio clip path escapes audio directory: {p}")
         if not p.exists():
             raise FileNotFoundError(f"Missing scene WAV: {p}")
 
@@ -604,10 +637,10 @@ def extract_preview_frames(
     scenes: list[dict] | None = None,
 ) -> list[Path]:
     """Extract 1 midpoint PNG frame per scene for visual QA."""
-    if manifest_path.is_file():
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    elif scenes is not None:
+    if scenes is not None and _is_music_only(scenes):
         manifest = [{"id": s["id"], "duration": float(s["duration_s"])} for s in scenes]
+    elif manifest_path.is_file():
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     else:
         raise FileNotFoundError(f"Missing audio manifest: {manifest_path}")
     out_dir.mkdir(parents=True, exist_ok=True)

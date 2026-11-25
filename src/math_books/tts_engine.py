@@ -173,14 +173,18 @@ def synthesize_gemini_tts(
         raise RuntimeError(msg)
 
     data = resp.json()
-    parts = data["candidates"][0]["content"]["parts"]
+    candidates = data.get("candidates") if isinstance(data, dict) else None
+    first_candidate = candidates[0] if isinstance(candidates, list) and candidates else None
+    content = first_candidate.get("content") if isinstance(first_candidate, dict) else None
+    parts = content.get("parts") if isinstance(content, dict) else None
     audio_bytes = None
     mime_type = ""
-    for p in parts:
-        if "inlineData" in p:
-            mime_type = p["inlineData"].get("mimeType", "")
-            audio_bytes = base64.b64decode(p["inlineData"]["data"])
-            break
+    if isinstance(parts, list):
+        for p in parts:
+            if isinstance(p, dict) and isinstance(p.get("inlineData"), dict) and "data" in p["inlineData"]:
+                mime_type = str(p["inlineData"].get("mimeType", ""))
+                audio_bytes = base64.b64decode(p["inlineData"]["data"])
+                break
 
     if audio_bytes is None:
         detail = _redact_secret(json.dumps(data, ensure_ascii=False), api_key)[:400]
@@ -233,7 +237,7 @@ def generate_topic_tts(
     directory = Path(video_dir_name)
     candidate = directory.parent.name if directory.name in ("uk", "ru", "en") else directory.name
     candidate = candidate.removeprefix("video_")
-    if topic is None and lesson_path(project_root, candidate).is_file():
+    if topic is None and re.fullmatch(r"[a-z][a-z0-9_]*", candidate) and lesson_path(project_root, candidate).is_file():
         topic = get_topic(candidate, language, project_root)
         if directory.as_posix() != topic.video_dir:
             raise ValueError(f"Future lesson output path must be {topic.video_dir}")
@@ -440,7 +444,9 @@ def _generate_batch(
         for idx, scene in enumerate(scenes):
             try:
                 cache = json.loads((audio_dir / f"{scene['id']}.cache.json").read_text(encoding="utf-8"))
-                cached_wav = audio_dir / cache["wav"]
+                cached_wav = (audio_dir / cache["wav"]).resolve()
+                if not cached_wav.is_relative_to(audio_dir.resolve()):
+                    continue
                 reusable = (
                     cache["fingerprint"] in fingerprints(scene, idx)[1]
                     and cache["wav_sha256"] == hashlib.sha256(cached_wav.read_bytes()).hexdigest()
@@ -468,7 +474,9 @@ def _generate_batch(
         fingerprint, valid_fingerprints = fingerprints(scene, idx)
         try:
             cache = json.loads(cache_path.read_text(encoding="utf-8"))
-            wav_path = audio_dir / cache.get("wav", wav_path.name)
+            wav_path = (audio_dir / cache.get("wav", wav_path.name)).resolve()
+            if not wav_path.is_relative_to(audio_dir.resolve()):
+                raise ValueError("Cached WAV path escapes audio directory")
             valid = (
                 cache["fingerprint"] in valid_fingerprints
                 and cache["wav_sha256"] == hashlib.sha256(wav_path.read_bytes()).hexdigest()

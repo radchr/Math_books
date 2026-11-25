@@ -106,7 +106,8 @@ def _scene_path(root: Path, relative: str) -> Path:
 
 def review_path(root: Path, topic: str, language: str = "ru") -> Path:
     validate_language(language)
-    if language != "ru" or lesson_path(root, topic).is_file():
+    is_lesson = bool(re.fullmatch(r"[a-z][a-z0-9_]*", topic)) and lesson_path(root, topic).is_file()
+    if language != "ru" or is_lesson:
         return root / "content_reviews" / language / f"{topic}.json"
     return root / "content_reviews" / f"{topic}.json"
 
@@ -424,13 +425,14 @@ def check_content_review(
         "ok": False,
         "issues": [],
         "math_checks": [],
-        "review_path": str(review_path(root, topic, language)),
+        "review_path": "",
         "language": language,
         "scope": "Recorded editorial judgments and deterministic checks; not independent fact verification.",
     }
     try:
         _require(bool(re.fullmatch(r"[a-zA-Z0-9_-]+", topic)), "Invalid review topic name")
-        path = Path(report["review_path"])
+        path = review_path(root, topic, language)
+        report["review_path"] = str(path)
         _require(path.is_file(), f"Missing content review: {path}; run math-books review {topic} --init")
         dossier = json.loads(
             path.read_text(encoding="utf-8"),

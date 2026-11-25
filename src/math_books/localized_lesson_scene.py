@@ -2,6 +2,7 @@
 
 import json
 import os
+from fractions import Fraction
 from pathlib import Path
 
 from manim import FadeIn, FadeOut, Group
@@ -46,11 +47,13 @@ class LocalizedLessonScene(VerticalShortScene):
         if self._event_timeline != expected_events:
             raise ValueError("Render cue inputs differ from the verified snapshot")
         self._event_records = []
-        audio_offset = 0.0
+        audio_offset = Fraction(0)
+        pause_duration = Fraction(2, 5)
         for index, row in enumerate(self._lesson_rows):
             duration = durations[row["id"]]
+            duration_exact = Fraction(str(duration))
             start_frame = round(audio_offset * 30)
-            end_frame = round((audio_offset + duration) * 30)
+            end_frame = round((audio_offset + duration_exact) * 30)
             if round(self.renderer.time * 30) != start_frame:
                 raise ValueError("Rendered scene start differs from the cumulative audio clock")
             self.run_segment(lambda value, row=row: self.show_card(row, value), (end_frame - start_frame) / 30)
@@ -58,7 +61,7 @@ class LocalizedLessonScene(VerticalShortScene):
                 self.play(FadeOut(Group(*self.mobjects)), run_time=0.4)
             else:
                 self.wait((9 + 0.001) / 30)
-            audio_offset += duration + 0.4
+            audio_offset += duration_exact + pause_duration
         validate_event_log(self._event_timeline, self._event_records)
         log_path = os.environ.get("MATH_BOOKS_EVENT_LOG_PATH")
         if log_path:
@@ -79,6 +82,7 @@ class LocalizedLessonScene(VerticalShortScene):
 
     def show_card(self, row: dict, duration: float) -> None:
         theme = get_theme(row.get("theme", "basketball_dark"))
+        self.camera.background_color = theme.bg  # ty: ignore[invalid-assignment]
         template = row.get("visual", {}).get("template", "text_card")
         objects = get_visual_block(template).build(theme, self._lesson_language, row)
         # Bound the animation cost for short test clips; narration remains authoritative.

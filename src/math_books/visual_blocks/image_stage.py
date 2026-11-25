@@ -79,6 +79,8 @@ def build(theme: VisualTheme, _language: str, row: Mapping[str, Any]) -> dict[st
         formula = MathTex(row["formula"], font_size=44, color=theme.text_primary)
         if formula.width > 7.4:
             formula.scale_to_fit_width(7.4)
+        if formula.height > 1.5:
+            formula.scale_to_fit_height(1.5)
         formula.move_to(DOWN * 2.8)
         objects["formula"] = formula
     if params.get("caption_label"):
@@ -103,6 +105,15 @@ def build(theme: VisualTheme, _language: str, row: Mapping[str, Any]) -> dict[st
     return objects
 
 
+def _available_targets(params: Mapping[str, Any], formula: str) -> frozenset[str]:
+    targets = {"title", "body", "diagram"}
+    if formula:
+        targets.add("formula")
+    if params.get("caption_label"):
+        targets.add("caption")
+    return frozenset(targets)
+
+
 def register() -> None:
     register_visual_block(
         VisualBlockSpec(
@@ -119,5 +130,6 @@ def register() -> None:
             validate_params=validate_params,
             build=build,
             source_file=Path(__file__),
+            available_targets=_available_targets,
         )
     )

@@ -111,22 +111,41 @@ def _normalize_to_wav(source_path: Path, out_wav: Path, *, sample_rate: int = 24
     subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=60)
 
 
-def _register_track_entry(root: Path, entry: dict[str, Any], *, overwrite: bool = False) -> dict[str, Any]:
-    manifest_path = music_dir(root) / "manifest.json"
-    if manifest_path.is_file():
-        raw = json.loads(manifest_path.read_text(encoding="utf-8"))
-        tracks = list(raw.get("tracks", []))
-    else:
-        tracks = []
-    exists = any(t.get("id") == entry["id"] for t in tracks)
-    if exists and not overwrite:
-        raise FileExistsError(f"Music track {entry['id']!r} already exists; pass --overwrite to replace")
-    tracks = [t for t in tracks if t.get("id") != entry["id"]]
-    tracks.append(entry)
-    tracks.sort(key=lambda t: str(t["id"]))
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    atomic_json(manifest_path, {"schema_version": 1, "tracks": tracks})
-    return entry
+def _register_track_entry(
+    root: Path,
+    entry: dict[str, Any],
+    *,
+    staged_wav: Path | None = None,
+    dest_wav: Path | None = None,
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    from math_books.media_io import audio_lock
+
+    out_dir = music_dir(root)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    with audio_lock(out_dir):
+        manifest_path = out_dir / "manifest.json"
+        if manifest_path.is_file():
+            raw = json.loads(manifest_path.read_text(encoding="utf-8"))
+            tracks = list(raw.get("tracks", []))
+        else:
+            tracks = []
+        exists = any(t.get("id") == entry["id"] for t in tracks)
+        if exists and not overwrite:
+            raise FileExistsError(f"Music track {entry['id']!r} already exists; pass --overwrite to replace")
+        if dest_wav is not None and dest_wav.exists() and not overwrite:
+            raise FileExistsError(f"Music track file already exists: {dest_wav}; pass --overwrite to replace")
+        for key in ("id", "file", "title", "license", "author", "sha256"):
+            val = entry.get(key)
+            if not isinstance(val, str) or not val.strip():
+                raise ValueError(f"Music track entry requires non-empty {key!r}")
+        if staged_wav is not None and dest_wav is not None:
+            staged_wav.replace(dest_wav)
+        tracks = [t for t in tracks if t.get("id") != entry["id"]]
+        tracks.append(entry)
+        tracks.sort(key=lambda t: str(t["id"]))
+        atomic_json(manifest_path, {"schema_version": 1, "tracks": tracks})
+        return entry
 
 
 def synthesize_procedural_wav(
@@ -241,9 +260,9 @@ def synthesize_musicgen_wav(
 
     client = Client(space, token=hf_token)
     result = client.predict(prompt, None, api_name="/predict_batched")
-    audio_path = result[0] if isinstance(result, (list, tuple)) else result
+    audio_path = result[0] if isinstance(result, (list, tuple)) and result else result
     if isinstance(audio_path, dict):
-        audio_path = audio_path.get("path") or audio_path.get("url")
+        audio_path = audio_path.get("path")
     if not isinstance(audio_path, (str, Path)) or not Path(audio_path).is_file():
         raise RuntimeError(f"MusicGen returned unexpected audio result: {type(result).__name__}")
     _normalize_to_wav(Path(audio_path), out_wav)
@@ -270,9 +289,9 @@ def synthesize_ace_step_wav(
         infer_step=int(infer_steps),
         api_name="/__call__",
     )
-    audio_path = result[0] if isinstance(result, (list, tuple)) else result
+    audio_path = result[0] if isinstance(result, (list, tuple)) and result else result
     if isinstance(audio_path, dict):
-        audio_path = audio_path.get("path") or audio_path.get("url")
+        audio_path = audio_path.get("path")
     if not isinstance(audio_path, (str, Path)) or not Path(audio_path).is_file():
         raise RuntimeError(f"ACE-Step returned unexpected audio result: {type(result).__name__}")
     _normalize_to_wav(Path(audio_path), out_wav)
@@ -298,12 +317,16 @@ def synthesize_lyria_wav(
         detail = resp.text.replace(api_key, "[REDACTED]")[:400]
         raise RuntimeError(f"Lyria music generation failed ({resp.status_code}): {detail}")
     data = resp.json()
-    parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+    candidates = data.get("candidates") if isinstance(data, dict) else None
+    first_candidate = candidates[0] if isinstance(candidates, list) and candidates else None
+    content = first_candidate.get("content") if isinstance(first_candidate, dict) else None
+    parts = content.get("parts") if isinstance(content, dict) else None
     audio_bytes = None
-    for part in parts:
-        if "inlineData" in part and "data" in part["inlineData"]:
-            audio_bytes = base64.b64decode(part["inlineData"]["data"])
-            break
+    if isinstance(parts, list):
+        for part in parts:
+            if isinstance(part, dict) and isinstance(part.get("inlineData"), dict) and "data" in part["inlineData"]:
+                audio_bytes = base64.b64decode(part["inlineData"]["data"])
+                break
     if audio_bytes is None:
         raise RuntimeError("No audio inlineData returned by Lyria")
     with tempfile.TemporaryDirectory() as tmp:
@@ -371,23 +394,22 @@ def generate_music_track(
             license_str = "Google AI Terms (AI-generated instrumental)"
 
         sha = hashlib.sha256(staged.read_bytes()).hexdigest()
-        staged.replace(dest_wav)
-
-    entry: dict[str, Any] = {
-        "id": track_id,
-        "file": dest_wav.name,
-        "title": title or f"{track_id} ({backend})",
-        "license": license_str,
-        "author": author,
-        "source": backend,
-        "mood": mood,
-        "bpm": int(round(bpm)),
-        "duration_s": round(dur, 2),
-        "tags": sorted(set(tags or [mood, backend])),
-        **({"prompt": prompt} if prompt.strip() else {}),
-        "sha256": sha,
-    }
-    return _register_track_entry(root, entry, overwrite=overwrite)
+        effective_title = title.strip() if isinstance(title, str) and title.strip() else f"{track_id} ({backend})"
+        entry: dict[str, Any] = {
+            "id": track_id,
+            "file": dest_wav.name,
+            "title": effective_title,
+            "license": license_str,
+            "author": author,
+            "source": backend,
+            "mood": mood,
+            "bpm": int(round(bpm)),
+            "duration_s": round(dur, 2),
+            "tags": sorted(set(tags or [mood, backend])),
+            **({"prompt": prompt} if prompt.strip() else {}),
+            "sha256": sha,
+        }
+        return _register_track_entry(root, entry, staged_wav=staged, dest_wav=dest_wav, overwrite=overwrite)
 
 
 def import_music_track(
@@ -406,6 +428,12 @@ def import_music_track(
     """Import an external royalty-free/CC0 audio file (MP3/WAV/OGG/FLAC) into the reusable music bank."""
     if not _ID_RE.fullmatch(track_id):
         raise ValueError(f"Invalid music track ID {track_id!r}")
+    if not isinstance(title, str) or not title.strip():
+        raise ValueError("Music track title must be a non-empty string")
+    if not isinstance(license_str, str) or not license_str.strip():
+        raise ValueError("Music track license must be a non-empty string")
+    if not isinstance(author, str) or not author.strip():
+        raise ValueError("Music track author must be a non-empty string")
     if not source_file.is_file():
         raise FileNotFoundError(f"Source audio file not found: {source_file}")
     out_dir = music_dir(root)
@@ -418,21 +446,20 @@ def import_music_track(
         _normalize_to_wav(source_file, staged)
         dur = wav_duration(staged)
         sha = hashlib.sha256(staged.read_bytes()).hexdigest()
-        staged.replace(dest_wav)
-    entry: dict[str, Any] = {
-        "id": track_id,
-        "file": dest_wav.name,
-        "title": title,
-        "license": license_str,
-        "author": author,
-        "source": "imported",
-        "mood": mood,
-        **({"bpm": bpm} if bpm is not None else {}),
-        "duration_s": round(dur, 2),
-        "tags": sorted(set(tags or [mood, "imported"])),
-        "sha256": sha,
-    }
-    return _register_track_entry(root, entry, overwrite=overwrite)
+        entry: dict[str, Any] = {
+            "id": track_id,
+            "file": dest_wav.name,
+            "title": title.strip(),
+            "license": license_str.strip(),
+            "author": author.strip(),
+            "source": "imported",
+            "mood": mood,
+            **({"bpm": bpm} if bpm is not None else {}),
+            "duration_s": round(dur, 2),
+            "tags": sorted(set(tags or [mood, "imported"])),
+            "sha256": sha,
+        }
+        return _register_track_entry(root, entry, staged_wav=staged, dest_wav=dest_wav, overwrite=overwrite)
 
 
 def render_music_bed(track_path: Path, out_wav: Path, duration_s: float) -> float:

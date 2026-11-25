@@ -91,18 +91,16 @@ def crop_mineru_images(
                     bbox = b["bbox"]
                     if (
                         len(bbox) != 4
-                        or not all(isinstance(v, (int, float)) and math.isfinite(v) for v in bbox)
+                        or not all(
+                            not isinstance(v, bool) and isinstance(v, (int, float)) and math.isfinite(v) for v in bbox
+                        )
                         or not (0 <= bbox[0] < bbox[2] <= 1 and 0 <= bbox[1] < bbox[3] <= 1)
                     ):
                         raise ValueError(f"Invalid normalized bbox on page {pno}: {bbox}")
-                    crop = im.crop(
-                        (
-                            int(bbox[0] * w),
-                            int(bbox[1] * h),
-                            int(bbox[2] * w),
-                            int(bbox[3] * h),
-                        )
-                    )
+                    x0, y0, x1, y1 = int(bbox[0] * w), int(bbox[1] * h), int(bbox[2] * w), int(bbox[3] * h)
+                    if x1 <= x0 or y1 <= y0:
+                        raise ValueError(f"Degenerate pixel crop on page {pno}: {bbox}")
+                    crop = im.crop((x0, y0, x1, y1))
                     img_name = f"p{pno:04d}_fig{fig_idx}.png"
                     crop.save(images_out_dir / img_name)
                     per_page.setdefault(pno, []).append(
@@ -274,6 +272,11 @@ def build_markdown(
     """Build Markdown file with cropped MinerU figures for the given pages."""
     if not page_numbers:
         raise ValueError("No pages requested")
+    if output_filename is None:
+        output_filename = f"sample_p{page_numbers[0]:03d}_{page_numbers[-1]:03d}.md"
+    md_path = (out_dir / output_filename).resolve()
+    if not md_path.is_relative_to(out_dir.resolve()):
+        raise ValueError(f"Output filename escapes output directory: {output_filename!r}")
     doc = lxml_html.fromstring(html_path.read_text(encoding="utf-8"))
     selected = {}
     for pno in page_numbers:
@@ -295,9 +298,7 @@ def build_markdown(
     for pno in page_numbers:
         sections.append(html_page_to_md(selected[pno], pno, per_page_images.get(pno, [])))
 
-    if output_filename is None:
-        output_filename = f"sample_p{page_numbers[0]:03d}_{page_numbers[-1]:03d}.md"
-    md_path = out_dir / output_filename
+    out_dir.mkdir(parents=True, exist_ok=True)
     md_path.write_text("\n\n".join(sections) + "\n", encoding="utf-8")
     images = sorted(img["filename"] for figures in per_page_images.values() for img in figures)
     return md_path, images

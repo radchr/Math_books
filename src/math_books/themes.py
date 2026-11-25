@@ -17,6 +17,17 @@ CONTENT_MAX_WIDTH = 7.6
 FONT_FAMILY = "DejaVu Sans"
 
 
+THEME_COLOR_ROLES = frozenset({"primary", "secondary", "positive", "warning", "text", "muted", "card"})
+
+
+def validate_color_role(role: object, context: str) -> str:
+    """Validate that a visual block color role is a known VisualTheme role."""
+    if not isinstance(role, str) or role not in THEME_COLOR_ROLES:
+        available = ", ".join(sorted(THEME_COLOR_ROLES))
+        raise ValueError(f"{context}: unknown color role {role!r}; choose one of {available}")
+    return role
+
+
 @dataclasses.dataclass(frozen=True)
 class VisualTheme:
     """Color and typography tokens for a 9:16 vertical video domain."""

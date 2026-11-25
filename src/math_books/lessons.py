@@ -40,7 +40,12 @@ def validate_lesson_data(data: object, key: str, language: str = "ru", *, source
     from math_books.visual_blocks import get_visual_block
 
     validate_language(language)
-    if not isinstance(data, dict) or data.get("schema_version") != 1 or data.get("topic") != key:
+    if (
+        not isinstance(data, dict)
+        or type(data.get("schema_version")) is not int
+        or data.get("schema_version") != 1
+        or data.get("topic") != key
+    ):
         raise ValueError(f"Invalid lesson schema/topic: {source_label or key}")
 
     lesson_theme: str | None = None
@@ -118,7 +123,7 @@ def validate_lesson_data(data: object, key: str, language: str = "ru", *, source
                 raise ValueError(f"{ident}: visual.params must be an object")
             spec = get_visual_block(visual["template"])
             spec.validate_params(params, translations, ident)
-            allowed_targets = spec.cue_targets
+            allowed_targets = spec.resolve_cue_targets(params, formula)
             visual_payload = {"template": spec.name, "params": params}
 
         lang_fields = dict(translations[language])

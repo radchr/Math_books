@@ -95,6 +95,8 @@ def build(theme: VisualTheme, language: str, row: Mapping[str, Any]) -> dict[str
         formula = MathTex(row["formula"], font_size=44, color=theme.text_primary)
         if formula.width > 7.4:
             formula.scale_to_fit_width(7.4)
+        if formula.height > 1.5:
+            formula.scale_to_fit_height(1.5)
         formula.move_to(DOWN * 3.1)
         objects["formula"] = formula
     if params.get("limit_label"):
@@ -110,6 +112,15 @@ def build(theme: VisualTheme, language: str, row: Mapping[str, Any]) -> dict[str
         lim.move_to(DOWN * 5.0)
         objects["limit"] = lim
     return objects
+
+
+def _available_targets(params: Mapping[str, Any], formula: str) -> frozenset[str]:
+    targets = {"title", "body", "pause", "answer"}
+    if formula:
+        targets.add("formula")
+    if params.get("limit_label"):
+        targets.add("limit")
+    return frozenset(targets)
 
 
 def register() -> None:
@@ -128,5 +139,6 @@ def register() -> None:
             validate_params=validate_params,
             build=build,
             source_file=Path(__file__),
+            available_targets=_available_targets,
         )
     )

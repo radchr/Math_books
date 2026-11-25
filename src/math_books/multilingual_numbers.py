@@ -60,6 +60,7 @@ def vocabulary(language: str) -> dict[str, int]:
 def integer_at(words: list[str], start: int, language: str) -> tuple[int, int]:
     values = vocabulary(language)
     total = group = 0
+    had_group = False
     rank = 4
     last = None
     scale = float("inf")
@@ -82,13 +83,14 @@ def integer_at(words: list[str], start: int, language: str) -> tuple[int, int]:
         elif value >= 1000:
             if value >= scale:
                 break
-            total += (group or 1) * value
-            group, rank, scale = 0, 4, value
+            total += (group if had_group else 1) * value
+            group, had_group, rank, scale = 0, False, 4, value
         else:
             next_rank = 3 if value >= 100 else 2 if value >= 10 else 1
             if next_rank >= rank or (last is not None and 10 <= last < 20 and next_rank == 1):
                 break
             group += value
+            had_group = True
             rank = next_rank
         last = value
         index += 1
@@ -171,6 +173,9 @@ def normalize(text: str, language: str) -> list[str]:
     )
     for phrase, token in operation_words.items():
         text = re.sub(r"\b" + phrase + r"\b", f" {token} ", text)
+    # Word-internal compound hyphens (e.g. 'three-pointer', 'будь-який') are separators,
+    # whereas spaced, leading, digit-adjacent, or single-letter hyphens stay arithmetic minus.
+    text = re.sub(r"(?<=[^\W\d_]{2})-(?=[^\W\d_]{2})", " ", text)
     # An adjacent digit/digit slash is a numeric fraction. A spaced slash,
     # or a slash next to a spelled-out operand, is an explicit division.
     text = re.sub(r"(?<!\d)/|/(?!\d)", " #divide ", text)
@@ -224,8 +229,10 @@ def normalize(text: str, language: str) -> list[str]:
             aliases = {
                 "відсотків": "відсоток",
                 "відсотки": "відсоток",
+                "відсотка": "відсоток",
                 "процентів": "відсоток",
                 "проценти": "відсоток",
+                "процента": "відсоток",
                 "процент": "відсоток",
                 "percents": "percent",
             }
@@ -262,6 +269,11 @@ def normalize(text: str, language: str) -> list[str]:
                 start += 1
             numerator, fraction_end = integer_at(words, start, language)
             if fraction_end > start and fraction_end < len(words) and words[fraction_end] in denominators:
+                number += Fraction(numerator, denominators[words[fraction_end]])
+                end = fraction_end + 1
+        elif language == "uk" and end + 1 < len(words) and words[end] in ("і", "й"):
+            numerator, fraction_end = integer_at(words, end + 1, language)
+            if fraction_end > end + 1 and fraction_end < len(words) and words[fraction_end] in denominators:
                 number += Fraction(numerator, denominators[words[fraction_end]])
                 end = fraction_end + 1
         tokens.append(f"#number:{number}")

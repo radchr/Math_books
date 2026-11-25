@@ -54,6 +54,13 @@ class VisualBlockSpec:
     validate_params: Callable[[Mapping[str, Any], Mapping[str, Mapping[str, Any]], str], None]
     build: Callable[[VisualTheme, str, Mapping[str, Any]], dict[str, Any]]
     source_file: Path
+    available_targets: Callable[[Mapping[str, Any], str], frozenset[str]] | None = None
+
+    def resolve_cue_targets(self, params: Mapping[str, Any], formula: str) -> frozenset[str]:
+        """Return cue targets actually produced for the given scene params and formula."""
+        if self.available_targets is not None:
+            return self.available_targets(params, formula)
+        return self.cue_targets if formula else self.cue_targets - {"formula"}
 
 
 _REGISTRY: dict[str, VisualBlockSpec] = {}
@@ -116,12 +123,15 @@ def visual_block_catalog() -> list[dict[str, object]]:
 def visual_source_files() -> list[Path]:
     """Return deterministic source paths for render-fingerprint provenance."""
     _ensure_all_loaded()
+    packs_dir = Path(__file__).resolve().parents[1] / "packs"
     paths = {
         Path(__file__).resolve(),
         Path(__file__).resolve().parents[1] / "themes.py",
         Path(__file__).resolve().parents[1] / "ui_strings.json",
-        Path(__file__).resolve().parents[1] / "packs" / "__init__.py",
+        packs_dir / "__init__.py",
     }
+    for pack_init in packs_dir.glob("*/__init__.py"):
+        paths.add(pack_init.resolve())
     for spec in _REGISTRY.values():
         paths.add(spec.source_file.resolve())
     return sorted(paths)

@@ -8,7 +8,7 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
-from math_books.themes import CONTENT_MAX_WIDTH, VisualTheme, ui_string
+from math_books.themes import CONTENT_MAX_WIDTH, VisualTheme, ui_string, validate_color_role
 from math_books.visual_blocks import (
     VisualBlockSpec,
     localized_label,
@@ -41,6 +41,8 @@ def validate_params(params: Mapping[str, Any], translations: Mapping[str, Mappin
         value = parse_exact_fraction(item.get("value"), f"{context}.items[{ident}].value")
         if value < 0:
             raise ValueError(f"{context}: bar value must be non-negative")
+        if "color" in item and item["color"] is not None:
+            validate_color_role(item["color"], f"{context}.items[{ident}].color")
         require_localized_label(translations, ident, context)
     winner = params.get("winner")
     if winner is not None and winner not in ids:
@@ -141,9 +143,22 @@ def build(theme: VisualTheme, language: str, row: Mapping[str, Any]) -> dict[str
         formula = MathTex(row["formula"], font_size=42, color=theme.text_primary)
         if formula.width > 7.4:
             formula.scale_to_fit_width(7.4)
+        if formula.height > 1.4:
+            formula.scale_to_fit_height(1.4)
         formula.move_to(DOWN * 3.55)
         objects["formula"] = formula
     return objects
+
+
+def _available_targets(params: Mapping[str, Any], formula: str) -> frozenset[str]:
+    targets = {"title", "body", "baseline"}
+    for idx in range(len(params.get("items", []))):
+        targets.add(f"bar_{idx + 1}")
+    if params.get("winner") is not None:
+        targets.add("winner")
+    if formula:
+        targets.add("formula")
+    return frozenset(targets)
 
 
 def register() -> None:
@@ -163,5 +178,6 @@ def register() -> None:
             validate_params=validate_params,
             build=build,
             source_file=Path(__file__),
+            available_targets=_available_targets,
         )
     )

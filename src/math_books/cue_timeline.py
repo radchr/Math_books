@@ -99,15 +99,18 @@ def timed_event_timeline(
 ) -> dict:
     """Resolve explicit timed cues for music_only lessons on the canonical 30 fps clock."""
     result = {}
-    offset = 0.0
+    offset = Fraction(0)
+    pause = Fraction(2, 5)
     for scene in scenes:
-        duration = float(scene["duration_s"])
+        duration = Fraction(str(float(scene["duration_s"])))
+        start_frame = round(offset * fps)
+        end_frame = round((offset + duration) * fps)
         events = []
         for cue in scene.get("cues", []):
-            at = float(cue["at_s"])
+            at = Fraction(str(float(cue["at_s"])))
             global_frame = round((offset + at) * fps)
-            frame = global_frame - round(offset * fps)
-            if global_frame >= round((offset + duration) * fps):
+            frame = global_frame - start_frame
+            if global_frame >= end_frame:
                 raise ValueError(f"Cue {cue['id']} leaves no frame inside scene duration")
             events.append(
                 {
@@ -121,7 +124,7 @@ def timed_event_timeline(
                 }
             )
         result[scene["id"]] = sorted(events, key=lambda event: (event["frame"], event["id"]))
-        offset += duration + 0.4
+        offset += duration + pause
     return result
 
 
@@ -133,19 +136,22 @@ def resolve_cues(
     duration: float,
     sample_rate: int = 24000,
     fps: int = 30,
-    offset_s: float = 0.0,
+    offset_s: float | Fraction = 0.0,
 ) -> list[dict]:
     """Resolve phrase occurrences; a missing cue never silently becomes a guessed time."""
     validate_language(language)
+    offset_float = float(offset_s)
     if (
         not math.isfinite(duration)
         or duration <= 0
         or sample_rate <= 0
         or fps <= 0
-        or not math.isfinite(offset_s)
-        or offset_s < 0
+        or not math.isfinite(offset_float)
+        or offset_float < 0
     ):
         raise ValueError("Invalid cue clock or duration")
+    offset_exact = offset_s if isinstance(offset_s, Fraction) else Fraction(str(offset_s))
+    duration_exact = Fraction(str(float(duration)))
     cues = row.get("cues", [])
     if not cues:
         return []
@@ -172,12 +178,15 @@ def resolve_cues(
     suffixes = [
         normalize_spoken_text(" ".join(word["word"] for word in words[i:]), language) for i in range(len(words) + 1)
     ]
+    word_has_tokens = [bool(normalize_spoken_text(word["word"], language)) for word in words]
     for cue in cues:
         phrase = normalize_spoken_text(cue["phrase"], language)
         matches = []
         matched_tokens = set()
         # Normalize joined spans so compound numbers work across separate ASR words.
         for first in range(len(words)):
+            if not word_has_tokens[first]:
+                continue
             for last in range(first, len(words)):
                 span = " ".join(word["word"] for word in words[first : last + 1])
                 normalized = normalize_spoken_text(span, language)
@@ -192,16 +201,16 @@ def resolve_cues(
                         matches.append((first, last))
                         matched_tokens.add(token_span)
                         break
-                if len(normalized) > len(phrase) + 2:
+                if len(normalized) > len(phrase) + 8:
                     break
         if len(matches) < cue["occurrence"]:
             raise ValueError(f"Unresolved cue {cue['id']}: requested phrase occurrence is missing")
         first, last = matches[cue["occurrence"] - 1]
-        at = words[first]["start"] if cue["anchor"] == "start" else words[last]["end"]
-        global_frame = round((offset_s + at) * fps)
-        frame = global_frame - round(offset_s * fps)
+        at = Fraction(str(float(words[first]["start"] if cue["anchor"] == "start" else words[last]["end"])))
+        global_frame = round((offset_exact + at) * fps)
+        frame = global_frame - round(offset_exact * fps)
         # A reveal needs an actual output frame, not a transition after narration.
-        if global_frame >= round((offset_s + duration) * fps):
+        if global_frame >= round((offset_exact + duration_exact) * fps):
             raise ValueError(f"Cue {cue['id']} leaves no frame inside narration")
         events.append(
             {
@@ -221,13 +230,14 @@ def event_timeline(scenes: list[dict], manifest: list[dict], snapshot: dict, lan
     if [s["id"] for s in scenes] != [s["id"] for s in manifest]:
         raise ValueError("Cue scenes and audio manifest differ")
     result = {}
-    offset = 0.0
+    offset = Fraction(0)
+    pause = Fraction(2, 5)
     for scene, item in zip(scenes, manifest, strict=True):
         duration = float(item["duration"])
         result[scene["id"]] = resolve_cues(
             scene, snapshot.get(scene["id"], []), language, duration=duration, offset_s=offset
         )
-        offset += duration + 0.4
+        offset += Fraction(str(duration)) + pause
     return result
 
 

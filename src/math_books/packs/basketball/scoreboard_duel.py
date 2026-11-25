@@ -87,9 +87,20 @@ def build(theme: VisualTheme, language: str, row: Mapping[str, Any]) -> dict[str
         formula = MathTex(row["formula"], font_size=44, color=theme.text_primary)
         if formula.width > 7.4:
             formula.scale_to_fit_width(7.4)
+        if formula.height > 1.5:
+            formula.scale_to_fit_height(1.5)
         formula.move_to(DOWN * 4.7)
         objects["formula"] = formula
     return objects
+
+
+def _available_targets(params: Mapping[str, Any], formula: str) -> frozenset[str]:
+    targets = {"title", "scoreboard", "body"}
+    if params.get("clock"):
+        targets.add("clock")
+    if formula:
+        targets.add("formula")
+    return frozenset(targets)
 
 
 def register() -> None:
@@ -106,5 +117,6 @@ def register() -> None:
             validate_params=validate_params,
             build=build,
             source_file=Path(__file__),
+            available_targets=_available_targets,
         )
     )
