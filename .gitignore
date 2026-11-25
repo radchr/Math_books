@@ -18,6 +18,7 @@ wheels/
 !.env.example
 
 # Rendered media & Manim caches
+/media/
 video_*/media/
 videos/video_*/media/
 videos/video_*/*/media/

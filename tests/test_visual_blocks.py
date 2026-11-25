@@ -262,7 +262,7 @@ class TestVisualBlocksAndPacks(unittest.TestCase):
             validate_lesson_data(bad_cue, "demo_visual", "uk")
 
     def test_three_language_9_16_showcase_fits_safe_bounds(self):
-        from manim import Text
+        from manim import Text, tempconfig
 
         configure_vertical_9_16()
         samples = _sample_rows_for_all_blocks()
@@ -272,24 +272,25 @@ class TestVisualBlocksAndPacks(unittest.TestCase):
             # Avoid requiring pdflatex in CI while preserving realistic 9:16 bounding-box geometry.
             return Text(tex, font="DejaVu Sans", font_size=max(24, font_size - 8), color=kwargs.get("color", "#FFFFFF"))
 
-        with patch("manim.MathTex", side_effect=fake_mathtex):
-            for block_name, spec in list_visual_blocks().items():
-                sample = samples[block_name]
-                theme = get_theme("basketball_dark" if spec.pack == "basketball" else "science_lab")
-                for lang in SUPPORTED_LANGUAGES:
-                    with self.subTest(block=block_name, lang=lang):
-                        row = {
-                            "id": sample["id"],
-                            "title": sample["title"][lang],
-                            "body": sample["body"][lang],
-                            "formula": sample.get("formula", ""),
-                            **({"visual": sample["visual"]} if "visual" in sample else {}),
-                            **({"labels": sample["labels"][lang]} if "labels" in sample else {}),
-                        }
-                        objects = spec.build(theme, lang, row)
-                        self.assertTrue(set(objects) <= spec.cue_targets)
-                        fake_scene = SimpleNamespace(mobjects=list(objects.values()))
-                        VerticalShortScene.check_frame_bounds(fake_scene)
+        with tempfile.TemporaryDirectory() as media_tmp, tempconfig({"media_dir": media_tmp}):
+            with patch("manim.MathTex", side_effect=fake_mathtex):
+                for block_name, spec in list_visual_blocks().items():
+                    sample = samples[block_name]
+                    theme = get_theme("basketball_dark" if spec.pack == "basketball" else "science_lab")
+                    for lang in SUPPORTED_LANGUAGES:
+                        with self.subTest(block=block_name, lang=lang):
+                            row = {
+                                "id": sample["id"],
+                                "title": sample["title"][lang],
+                                "body": sample["body"][lang],
+                                "formula": sample.get("formula", ""),
+                                **({"visual": sample["visual"]} if "visual" in sample else {}),
+                                **({"labels": sample["labels"][lang]} if "labels" in sample else {}),
+                            }
+                            objects = spec.build(theme, lang, row)
+                            self.assertTrue(set(objects) <= spec.cue_targets)
+                            fake_scene = SimpleNamespace(mobjects=list(objects.values()))
+                            VerticalShortScene.check_frame_bounds(fake_scene)
 
     def test_extensible_check_registry_and_flexible_age_for_localized_lessons(self):
         register_math_check(
