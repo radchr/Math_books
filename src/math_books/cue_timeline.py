@@ -58,6 +58,73 @@ def localize_cues(
     return result
 
 
+def localize_timed_cues(
+    cues,
+    *,
+    duration_s: float,
+    formula: str,
+    allowed_targets: frozenset[str] | None = None,
+) -> list[dict]:
+    """Validate explicit timestamp cues (at_s) for music_only lessons."""
+    if not isinstance(cues, list):
+        raise ValueError("Scene cues must be a list")
+    valid_targets = allowed_targets if allowed_targets is not None else frozenset({"title", "body", "formula"})
+    ids, targets = set(), set()
+    result = []
+    for cue in cues:
+        if not isinstance(cue, dict) or set(cue) != {"id", "target", "at_s"}:
+            raise ValueError("Timed cue requires id, target, and at_s")
+        ident, target, at_s = cue["id"], cue["target"], cue["at_s"]
+        if not isinstance(ident, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", ident) or ident in ids:
+            raise ValueError("Invalid or duplicate cue ID")
+        if target not in valid_targets or target in targets:
+            raise ValueError(f"Cue target must be unique and supported: {', '.join(sorted(valid_targets))}")
+        if target == "formula" and not formula:
+            raise ValueError("Cannot reveal an empty formula")
+        if isinstance(at_s, bool) or not isinstance(at_s, (int, float)) or not math.isfinite(at_s):
+            raise ValueError(f"Cue {ident}: at_s must be a finite number")
+        if not (0.0 <= float(at_s) < duration_s):
+            raise ValueError(f"Cue {ident}: at_s={at_s} must be inside [0, {duration_s})")
+        ids.add(ident)
+        targets.add(target)
+        result.append({"id": ident, "target": target, "at_s": float(at_s)})
+    return result
+
+
+def timed_event_timeline(
+    scenes: list[dict],
+    *,
+    fps: int = 30,
+    sample_rate: int = 24000,
+) -> dict:
+    """Resolve explicit timed cues for music_only lessons on the canonical 30 fps clock."""
+    result = {}
+    offset = 0.0
+    for scene in scenes:
+        duration = float(scene["duration_s"])
+        events = []
+        for cue in scene.get("cues", []):
+            at = float(cue["at_s"])
+            global_frame = round((offset + at) * fps)
+            frame = global_frame - round(offset * fps)
+            if global_frame >= round((offset + duration) * fps):
+                raise ValueError(f"Cue {cue['id']} leaves no frame inside scene duration")
+            events.append(
+                {
+                    **cue,
+                    "frame": frame,
+                    "sample": round(Fraction(global_frame * sample_rate, fps)),
+                    "global_frame": global_frame,
+                    "time": frame / fps,
+                    "sample_rate": sample_rate,
+                    "fps": fps,
+                }
+            )
+        result[scene["id"]] = sorted(events, key=lambda event: (event["frame"], event["id"]))
+        offset += duration + 0.4
+    return result
+
+
 def resolve_cues(
     row: dict,
     words: list[dict],

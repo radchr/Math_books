@@ -14,6 +14,13 @@ from math_books.build_sample_md import build_markdown, parse_page_spec
 from math_books.content_bank import BANK_STATUSES, load_bank_entry, promote_bank_entry, query_bank
 from math_books.content_review import check_content_review, make_review_template, require_content_review, review_path
 from math_books.languages import SUPPORTED_LANGUAGES
+from math_books.music_tracks import (
+    MUSIC_BACKENDS,
+    PROCEDURAL_PRESETS,
+    generate_music_track,
+    import_music_track,
+    query_music_catalog,
+)
 from math_books.tts_engine import generate_topic_tts
 from math_books.video_builder import (
     available_topics,
@@ -44,6 +51,8 @@ def cmd_tts(args: argparse.Namespace) -> int:
     language = getattr(args, "lang", "ru")
     topic = get_topic(args.topic, language, root)
     scenes = topic_scenes(topic, root)
+    if scenes and scenes[0].get("audio_mode") == "music_only":
+        raise ValueError(f"Topic {topic.key!r} uses audio_mode='music_only'; run math-books build directly")
     require_content_review(scenes, topic.video_dir, root, expected_scene_file=topic.scene_file, language=language)
     generate_topic_tts(
         scenes,
@@ -123,7 +132,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
         if args.frames and report["ok"]:
             manifest = root / topic.video_dir / "audio" / "manifest.json"
             out_dir = root / topic.video_dir / "preview_frames"
-            frames = extract_preview_frames(mp4, manifest, out_dir)
+            frames = extract_preview_frames(mp4, manifest, out_dir, scenes=topic_scenes(topic, root))
             print(f"  Extracted {len(frames)} frames -> {out_dir}")
         all_ok = all_ok and report["ok"]
     return 0 if all_ok else 1
@@ -178,6 +187,59 @@ def cmd_bank(args: argparse.Namespace) -> int:
         print(json.dumps(visual_block_catalog(), ensure_ascii=False, indent=2))
         return 0
     raise ValueError(f"Unknown bank action: {args.bank_command}")
+
+
+def cmd_music(args: argparse.Namespace) -> int:
+    root = project_root()
+    if args.music_command == "list":
+        tracks = query_music_catalog(root, mood=args.mood, tag=args.tag, source=args.source)
+        if args.json:
+            print(json.dumps(tracks, ensure_ascii=False, indent=2))
+            return 0
+        if not tracks:
+            print("(no matching music tracks)")
+            return 0
+        for item in tracks:
+            tags = ", ".join(item.get("tags", []))
+            print(
+                f"- {item['id']:22s} | {item.get('source', '?'):10s} | {item.get('mood', '-'):10s} | "
+                f"{item['license']:14s} | tags:[{tags}]"
+            )
+        return 0
+    if args.music_command == "generate":
+        tags = [t.strip() for t in args.tags.split(",") if t.strip()] if args.tags else None
+        entry = generate_music_track(
+            root,
+            track_id=args.id,
+            backend=args.backend,
+            title=args.title,
+            prompt=args.prompt,
+            preset=args.preset,
+            bpm=args.bpm,
+            duration_s=args.duration,
+            mood=args.mood,
+            tags=tags,
+            overwrite=args.overwrite,
+        )
+        print(json.dumps(entry, ensure_ascii=False, indent=2))
+        return 0
+    if args.music_command == "import":
+        tags = [t.strip() for t in args.tags.split(",") if t.strip()] if args.tags else None
+        entry = import_music_track(
+            root,
+            Path(args.file),
+            track_id=args.id,
+            title=args.title,
+            license_str=args.license,
+            author=args.author,
+            mood=args.mood,
+            bpm=args.bpm,
+            tags=tags,
+            overwrite=args.overwrite,
+        )
+        print(json.dumps(entry, ensure_ascii=False, indent=2))
+        return 0
+    raise ValueError(f"Unknown music action: {args.music_command}")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -268,6 +330,41 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_bank_catalog = bank_sub.add_parser("catalog", help="Print the JSON catalog of all registered visual blocks")
     p_bank_catalog.set_defaults(func=cmd_bank)
+
+    p_music = sub.add_parser("music", help="Manage reusable background music bank (procedural, AI model, or import)")
+    music_sub = p_music.add_subparsers(dest="music_command", required=True)
+
+    p_music_list = music_sub.add_parser("list", help="List reusable tracks in assets/music/manifest.json")
+    p_music_list.add_argument("--mood", default=None)
+    p_music_list.add_argument("--tag", default=None)
+    p_music_list.add_argument("--source", default=None)
+    p_music_list.add_argument("--json", action="store_true")
+    p_music_list.set_defaults(func=cmd_music)
+
+    p_music_gen = music_sub.add_parser("generate", help="Generate a new reusable track via code or AI model")
+    p_music_gen.add_argument("--id", required=True, help="Track slug, e.g. live_upbeat_science")
+    p_music_gen.add_argument("--backend", choices=MUSIC_BACKENDS, default="musicgen")
+    p_music_gen.add_argument("--title", default=None)
+    p_music_gen.add_argument("--prompt", default="", help="Style/instrument prompt for ace_step or lyria")
+    p_music_gen.add_argument("--preset", choices=PROCEDURAL_PRESETS, default="energetic")
+    p_music_gen.add_argument("--bpm", type=float, default=124.0)
+    p_music_gen.add_argument("--duration", type=float, default=30.0)
+    p_music_gen.add_argument("--mood", default="energetic")
+    p_music_gen.add_argument("--tags", default=None, help="Comma-separated tags")
+    p_music_gen.add_argument("--overwrite", action="store_true")
+    p_music_gen.set_defaults(func=cmd_music)
+
+    p_music_imp = music_sub.add_parser("import", help="Import an external CC0/royalty-free audio file into the bank")
+    p_music_imp.add_argument("file", help="Path to local MP3/WAV/OGG/FLAC track")
+    p_music_imp.add_argument("--id", required=True)
+    p_music_imp.add_argument("--title", required=True)
+    p_music_imp.add_argument("--license", required=True)
+    p_music_imp.add_argument("--author", required=True)
+    p_music_imp.add_argument("--mood", default="energetic")
+    p_music_imp.add_argument("--bpm", type=int, default=None)
+    p_music_imp.add_argument("--tags", default=None)
+    p_music_imp.add_argument("--overwrite", action="store_true")
+    p_music_imp.set_defaults(func=cmd_music)
 
     return parser
 

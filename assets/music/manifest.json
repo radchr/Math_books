@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "tracks": [
+    {
+      "id": "calm_science",
+      "file": "calm_science.wav",
+      "title": "Calm Science Ambient Pad (16s seamless loop)",
+      "license": "CC0-1.0",
+      "author": "Math_books procedural synthesizer",
+      "source": "procedural",
+      "mood": "calm",
+      "bpm": 120,
+      "duration_s": 16.0,
+      "tags": [
+        "ambient",
+        "calm",
+        "procedural",
+        "science"
+      ],
+      "sha256": "879ccf8cb089a18c40ce8f9eccaf21b580f1f813a2629fd4f8e7d5245ca88b75"
+    },
+    {
+      "id": "energetic_stem",
+      "file": "energetic_stem.wav",
+      "title": "Energetic STEM Beat (124 BPM synth bass & arpeggio loop)",
+      "license": "CC0-1.0",
+      "author": "Math_books procedural synthesizer",
+      "source": "procedural",
+      "mood": "energetic",
+      "bpm": 124,
+      "duration_s": 15.48,
+      "tags": [
+        "energetic",
+        "procedural",
+        "shorts",
+        "upbeat"
+      ],
+      "sha256": "00e7201600e10406e732df87ad5edc94dfd6e7b46efc374b7045a49f0f37b47c"
+    }
+  ]
+}

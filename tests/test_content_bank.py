@@ -30,8 +30,8 @@ class TestContentBank(unittest.TestCase):
         ids = {e["id"] for e in entries}
         self.assertTrue({"perelman_echo_distance", "basketball_three_vs_chain_draft"} <= ids)
 
-        physics_ideas = query_bank(root, status="idea", domain="physics", tag="acoustics")
-        self.assertEqual([e["id"] for e in physics_ideas], ["perelman_echo_distance"])
+        physics_entries = query_bank(root, domain="physics", tag="acoustics")
+        self.assertEqual([e["id"] for e in physics_entries], ["perelman_echo_distance"])
 
         bar_drafts = query_bank(root, status="draft", template="compare_bars")
         self.assertEqual([e["id"] for e in bar_drafts], ["basketball_three_vs_chain_draft"])
@@ -43,8 +43,11 @@ class TestContentBank(unittest.TestCase):
             shutil.copytree(src_root / "content" / "bank", root / "content" / "bank")
 
             # Promoting an idea without lesson_draft fails clearly
+            idea_only = json.loads((root / "content/bank/perelman_echo_distance.json").read_text(encoding="utf-8"))
+            idea_only.update(id="synthetic_idea", status="idea", lesson_draft=None, promoted_lesson=None)
+            (root / "content/bank/synthetic_idea.json").write_text(json.dumps(idea_only), encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "has no lesson_draft"):
-                promote_bank_entry(root, "perelman_echo_distance")
+                promote_bank_entry(root, "synthetic_idea")
 
             # Colliding with legacy topic fails clearly
             with self.assertRaisesRegex(ValueError, "collides with a legacy topic"):

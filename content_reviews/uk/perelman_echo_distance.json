@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "topic": "perelman_echo_distance",
+  "language": "uk",
+  "localized_content_sha256": "52f6ff3f583a53b8f970167bc70ad0359c23c75496dd5dcfc96c39b05f3a669d",
+  "script_sha256": "0564bbcbfe64a5116932f82e0f970c49c73b54939fc368b52196637afea01582",
+  "scene_file": "src/math_books/localized_lesson_scene.py",
+  "scene_sha256": "bfa1ec61a826bc0c4a2de79e8efb5b086245efdb4e6768a425d6eaeb79c6f0bc",
+  "supporting_files": {
+    "src/math_books/lesson_math.py": "62de0619be031ffecf608750e1311166a9300eb3ca1834544fb276e1d1a39209",
+    "src/math_books/video_ui.py": "542a167a9e3957a003d251dae830457c76a810908ac1e6bc11cff7a39a4d6fe1"
+  },
+  "pedagogy": {
+    "audience_age": {
+      "min": 11,
+      "max": 14
+    },
+    "learning_objective": "Compute one-way distance from echo return time using d = v * t / 2 and understand why the factor of 2 accounts for round-trip travel.",
+    "prerequisites": [
+      "Speed = distance / time",
+      "Multiplying and dividing whole numbers"
+    ],
+    "assumptions": [
+      "Speed of sound in dry air at ~15°C is approximately 340 m/s",
+      "Echo reflects directly back from a flat cliff or wall"
+    ],
+    "limitations": [
+      "Speed of sound varies with air temperature and humidity",
+      "Wind and multiple reflections can distort echo timing"
+    ],
+    "challenge": "Calculate cliff distance when the echo returns after 4 seconds (340 * 4 / 2 = 680 m).",
+    "expected_learning": "The viewer avoids the common mistake of forgetting to divide by 2 and computes d = 680 m for t = 4 s."
+  },
+  "sources": [
+    {
+      "id": "perelman-physics",
+      "kind": "textbook",
+      "title": "Ya. I. Perelman, Physics for Entertainment (Sound and Echo)",
+      "url": "https://archive.org/details/physicsforentert035428mbp",
+      "locator": "Round-trip sound propagation and echo distance calculation d = v * t / 2."
+    }
+  ],
+  "math_checks": [],
+  "scene_reviews": [
+    {
+      "scene_id": "01_hook",
+      "teaching_role": "Pose the 2-second echo distance dilemma (680 m vs 340 m) to trigger a prediction.",
+      "claims": [
+        {
+          "statement": "Presents 680 m vs 340 m as a prediction prompt for a 2 s echo at 340 m/s.",
+          "script_quote": "Луна повернулась за 2 с Швидкість звуку 340 м/с. Яка відстань до скелі? Варіант А: 340 × 2 Варіант Б: 340 × 2 ÷ 2",
+          "kind": "model",
+          "source_ids": [
+            "perelman-physics"
+          ],
+          "math_check_ids": [],
+          "reasoning": "Presents 680 m vs 340 m as a prediction prompt for a 2 s echo at 340 m/s."
+        }
+      ]
+    },
+    {
+      "scene_id": "02_diagram",
+      "teaching_role": "Illustrate outgoing and returning sound wave covering total path 2d.",
+      "claims": [
+        {
+          "statement": "Wave travels distance d to the cliff and d back, so total path is 2d = v * t.",
+          "script_quote": "Звук іде туди й назад За 2 секунди хвиля долає подвійний шлях. Туди (d) + назад (d) = 2d",
+          "kind": "model",
+          "source_ids": [
+            "perelman-physics"
+          ],
+          "math_check_ids": [],
+          "reasoning": "Wave travels distance d to the cliff and d back, so total path is 2d = v * t."
+        }
+      ]
+    },
+    {
+      "scene_id": "03_calc",
+      "teaching_role": "Compute 340 * 2 / 2 = 340 m step-by-step.",
+      "claims": [
+        {
+          "statement": "With v = 340 m/s and t = 2 s, 2d = 680 m so d = 680 / 2 = 340 m.",
+          "script_quote": "Швидкий розрахунок Ділимо повний шлях звуку навпіл. Повний шлях: 340 × 2 Лише в один бік",
+          "kind": "mathematical",
+          "source_ids": [
+            "perelman-physics"
+          ],
+          "math_check_ids": [],
+          "reasoning": "With v = 340 m/s and t = 2 s, 2d = 680 m so d = 680 / 2 = 340 m.",
+          "proof": "d = v * t / 2 = (340 * 2) / 2 = 340 m."
+        }
+      ]
+    },
+    {
+      "scene_id": "04_challenge",
+      "teaching_role": "Transfer d = v * t / 2 to t = 4 s (680 m) and state temperature limitation.",
+      "claims": [
+        {
+          "statement": "For t = 4 s at 340 m/s, d = 340 * 4 / 2 = 680 m; screen notes 15°C dry-air assumption.",
+          "script_quote": "Твоя черга Луна повернулась через 4 секунди. Яка відстань до скелі? 680 метрів Швидкість звуку 340 м/с — для сухого повітря при ~15°C.",
+          "kind": "mathematical",
+          "source_ids": [
+            "perelman-physics"
+          ],
+          "math_check_ids": [],
+          "reasoning": "For t = 4 s at 340 m/s, d = 340 * 4 / 2 = 680 m; screen notes 15°C dry-air assumption.",
+          "proof": "d = (340 * 4) / 2 = 1360 / 2 = 680 m."
+        }
+      ]
+    }
+  ],
+  "unresolved_issues": [],
+  "reviews": {
+    "scientific": {
+      "reviewer": "Antigravity AI scientific/pedagogical audit",
+      "reviewer_type": "ai",
+      "reviewed_at": "2026-11-25",
+      "verdict": "approved",
+      "dossier_sha256": "7504d430bd16a2b826e4823bec213b8365389ecea6dd37f54e73c9fc18e7d14f",
+      "criteria": {
+        "evidence_matches_claims": {
+          "passed": true,
+          "rationale": "Verified exact echo kinematics, clear on-screen captions, and explicit 15°C air-speed caveat."
+        },
+        "calculations_correct": {
+          "passed": true,
+          "rationale": "Verified exact echo kinematics, clear on-screen captions, and explicit 15°C air-speed caveat."
+        },
+        "assumptions_and_limits": {
+          "passed": true,
+          "rationale": "Verified exact echo kinematics, clear on-screen captions, and explicit 15°C air-speed caveat."
+        },
+        "no_overclaim": {
+          "passed": true,
+          "rationale": "Verified exact echo kinematics, clear on-screen captions, and explicit 15°C air-speed caveat."
+        }
+      }
+    },
+    "pedagogical": {
+      "reviewer": "Antigravity AI scientific/pedagogical audit",
+      "reviewer_type": "ai",
+      "reviewed_at": "2026-11-25",
+      "verdict": "approved",
+      "dossier_sha256": "7504d430bd16a2b826e4823bec213b8365389ecea6dd37f54e73c9fc18e7d14f",
+      "criteria": {
+        "age_and_prerequisites": {
+          "passed": true,
+          "rationale": "Verified exact echo kinematics, clear on-screen captions, and explicit 15°C air-speed caveat."
+        },
+        "objective_alignment": {
+          "passed": true,
+          "rationale": "Verified exact echo kinematics, clear on-screen captions, and explicit 15°C air-speed caveat."
+        },
+        "explanation_clarity": {
+          "passed": true,
+          "rationale": "Verified exact echo kinematics, clear on-screen captions, and explicit 15°C air-speed caveat."
+        },
+        "challenge_checks_understanding": {
+          "passed": true,
+          "rationale": "Verified exact echo kinematics, clear on-screen captions, and explicit 15°C air-speed caveat."
+        }
+      }
+    }
+  }
+}

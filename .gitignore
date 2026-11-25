@@ -25,6 +25,7 @@ videos/video_*/*/media/
 test_videos/video_*/media/
 *.mp4
 *.wav
+!assets/music/*.wav
 video_*/audio/.pipeline.lock
 videos/video_*/audio/.pipeline.lock
 videos/video_*/*/audio/.pipeline.lock

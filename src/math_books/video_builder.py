@@ -16,10 +16,11 @@ from fractions import Fraction
 from pathlib import Path
 
 from math_books.content_review import check_content_review, require_content_review
-from math_books.cue_timeline import event_timeline, validate_event_log
+from math_books.cue_timeline import event_timeline, timed_event_timeline, validate_event_log
 from math_books.languages import validate_language
 from math_books.lessons import lesson_digest
 from math_books.media_io import atomic_json, audio_lock, wav_duration
+from math_books.music_tracks import render_music_bed, resolve_music_track
 from math_books.topics import PRODUCTION_VIDEOS_DIR as PRODUCTION_VIDEOS_DIR
 from math_books.topics import TEST_VIDEOS_DIR as TEST_VIDEOS_DIR
 from math_books.topics import VIDEO_TOPICS as VIDEO_TOPICS
@@ -135,6 +136,10 @@ def verify_topic_audio(topic: VideoTopic, base: Path, *, refresh: bool = False) 
             return {"topic": topic.key, "path": str(path), "ok": False, "editorial": editorial, "issues": [str(error)]}
 
 
+def _is_music_only(scenes: list[dict]) -> bool:
+    return bool(scenes) and scenes[0].get("audio_mode") == "music_only"
+
+
 def render_fingerprint(
     topic: VideoTopic, base: Path, manifest: list[dict], *, snapshot: dict | None = None, events: dict | None = None
 ) -> str:
@@ -144,20 +149,32 @@ def render_fingerprint(
         digest.update(path.read_bytes())
     digest.update(json.dumps([(s["id"], s["duration"]) for s in manifest]).encode())
     if topic.lesson_file:
+        scenes = topic_scenes(topic, base)
         digest.update(topic.language.encode())
-        digest.update(lesson_digest(topic_scenes(topic, base)).encode())
+        digest.update(lesson_digest(scenes).encode())
         for name in ("languages.py", "lessons.py", "cue_timeline.py"):
             digest.update((base / "src/math_books" / name).read_bytes())
         from math_books.visual_blocks import visual_source_files
 
         for source_file in visual_source_files():
             digest.update(source_file.read_bytes())
-        if snapshot is None:
-            snapshot = timing_snapshot(base / topic.video_dir / "audio/manifest.json", manifest, base)
-        digest.update(json.dumps(snapshot, sort_keys=True).encode())
-        if events is None:
-            events = event_timeline(topic_scenes(topic, base), manifest, snapshot, topic.language)
-        digest.update(json.dumps(events, sort_keys=True).encode())
+        if _is_music_only(scenes):
+            track_id = str(scenes[0]["music_track"])
+            track_path, track_meta = resolve_music_track(base, track_id)
+            digest.update((base / "src/math_books/music_tracks.py").read_bytes())
+            digest.update(track_id.encode())
+            digest.update(track_meta["sha256"].encode())
+            digest.update(track_path.read_bytes())
+            if events is None:
+                events = timed_event_timeline(scenes)
+            digest.update(json.dumps(events, sort_keys=True).encode())
+        else:
+            if snapshot is None:
+                snapshot = timing_snapshot(base / topic.video_dir / "audio/manifest.json", manifest, base)
+            digest.update(json.dumps(snapshot, sort_keys=True).encode())
+            if events is None:
+                events = event_timeline(scenes, manifest, snapshot, topic.language)
+            digest.update(json.dumps(events, sort_keys=True).encode())
     return digest.hexdigest()
 
 
@@ -187,6 +204,10 @@ def _read_status_lock(audio_dir: Path):
 
 def _audio_presence(topic: VideoTopic, base: Path, scenes: list[dict], approved: bool) -> str:
     """Inspect cheap metadata/file presence only; do not decode, hash or run ASR."""
+    if _is_music_only(scenes):
+        if not approved:
+            return "blocked"
+        return "music_only"
     path = base / topic.video_dir / "audio/manifest.json"
     if not path.is_file():
         return "missing"
@@ -220,15 +241,20 @@ def _video_presence(topic: VideoTopic, base: Path, audio_state: str, approved: b
         return "missing"
     if not approved:
         return "blocked"
-    if audio_state != "unverified":
+    if audio_state not in ("unverified", "music_only"):
         return "stale"
     try:
         provenance = json.loads(video.with_suffix(".build.json").read_text(encoding="utf-8"))
+        has_audio_proof = (
+            isinstance(provenance.get("music_sha256"), str)
+            if audio_state == "music_only"
+            else isinstance(provenance.get("audio_sha256"), list)
+        )
         if (
             not isinstance(provenance, dict)
             or not isinstance(provenance.get("fingerprint"), str)
             or not isinstance(provenance.get("video_sha256"), str)
-            or not isinstance(provenance.get("audio_sha256"), list)
+            or not has_audio_proof
         ):
             return "stale"
     except (OSError, ValueError, TypeError):
@@ -299,25 +325,42 @@ def _verify_topic_video(topic: VideoTopic, base: Path, *, check_silence: bool = 
     video = base / topic.video_dir / topic.output_name
     report = verify_video(video, check_silence=check_silence)
     try:
-        manifest = validate_topic_audio(topic, base)
+        scenes = topic_scenes(topic, base)
         provenance = json.loads(video.with_suffix(".build.json").read_text())
-        snapshot = None
-        events = None
-        if topic.lesson_file:
-            snapshot = timing_snapshot(base / topic.video_dir / "audio/manifest.json", manifest, base)
-            events = event_timeline(topic_scenes(topic, base), manifest, snapshot, topic.language)
-        fingerprint = render_fingerprint(topic, base, manifest, snapshot=snapshot, events=events)
-        audio_hashes = [
-            hashlib.sha256((base / topic.video_dir / "audio" / s["wav"]).read_bytes()).hexdigest() for s in manifest
-        ]
-        if (
-            provenance["fingerprint"] != fingerprint
-            or provenance["audio_sha256"] != audio_hashes
-            or provenance["video_sha256"] != hashlib.sha256(video.read_bytes()).hexdigest()
-        ):
-            raise ValueError("Stale final video: source, audio or output changed; rebuild")
-        if events is not None:
+        if _is_music_only(scenes):
+            track_id = str(scenes[0]["music_track"])
+            _, track_meta = resolve_music_track(base, track_id)
+            manifest = [{"id": s["id"], "duration": float(s["duration_s"])} for s in scenes]
+            events = timed_event_timeline(scenes)
+            fingerprint = render_fingerprint(topic, base, manifest, events=events)
+            if (
+                provenance.get("audio_mode") != "music_only"
+                or provenance.get("music_track") != track_id
+                or provenance.get("music_sha256") != track_meta["sha256"]
+                or provenance.get("fingerprint") != fingerprint
+                or provenance.get("video_sha256") != hashlib.sha256(video.read_bytes()).hexdigest()
+            ):
+                raise ValueError("Stale final music_only video: source, music track, or output changed; rebuild")
             validate_event_log(events, provenance.get("events", []))
+        else:
+            manifest = validate_topic_audio(topic, base)
+            snapshot = None
+            events = None
+            if topic.lesson_file:
+                snapshot = timing_snapshot(base / topic.video_dir / "audio/manifest.json", manifest, base)
+                events = event_timeline(scenes, manifest, snapshot, topic.language)
+            fingerprint = render_fingerprint(topic, base, manifest, snapshot=snapshot, events=events)
+            audio_hashes = [
+                hashlib.sha256((base / topic.video_dir / "audio" / s["wav"]).read_bytes()).hexdigest() for s in manifest
+            ]
+            if (
+                provenance["fingerprint"] != fingerprint
+                or provenance["audio_sha256"] != audio_hashes
+                or provenance["video_sha256"] != hashlib.sha256(video.read_bytes()).hexdigest()
+            ):
+                raise ValueError("Stale final video: source, audio or output changed; rebuild")
+            if events is not None:
+                validate_event_log(events, provenance.get("events", []))
     except (OSError, ValueError, KeyError, TypeError) as error:
         report["issues"].append(f"Build provenance failed: {error}")
     report["ok"] = not report["issues"]
@@ -378,7 +421,13 @@ def render_silent_video(
 ) -> Path:
     """Render silent 9:16 Manim video and return path to the rendered MP4."""
     base = root or project_root()
-    manifest = validate_topic_audio(topic, base)
+    scenes = topic_scenes(topic, base)
+    music_only = _is_music_only(scenes)
+    manifest = (
+        [{"id": s["id"], "duration": float(s["duration_s"])} for s in scenes]
+        if music_only
+        else validate_topic_audio(topic, base)
+    )
     manifest_path = (base / topic.video_dir / "audio" / "manifest.json").resolve()
     media_dir = base / topic.video_dir / "media"
     silent_name = f"{topic.key}_silent.mp4"
@@ -392,19 +441,28 @@ def render_silent_video(
         str(base / topic.scene_file),
         topic.scene_class,
     ]
-    env = {**os.environ, "MATH_BOOKS_MANIFEST_PATH": str(manifest_path)}
+    env = {**os.environ}
+    if not music_only:
+        env["MATH_BOOKS_MANIFEST_PATH"] = str(manifest_path)
     event_records = []
     if topic.lesson_file is not None:
         env.update(MATH_BOOKS_LANGUAGE=topic.language, MATH_BOOKS_LESSON_PATH=str((base / topic.lesson_file).resolve()))
-        # Snapshot once; Manim must consume the exact word evidence bound by provenance.
-        if snapshot is None:
-            snapshot = timing_snapshot(manifest_path, manifest, base)
-        if events is None:
-            events = event_timeline(topic_scenes(topic, base), manifest, snapshot, topic.language)
-        with tempfile.TemporaryDirectory(dir=manifest_path.parent) as staging:
-            snapshot_path = Path(staging) / "timings.json"
-            snapshot_path.write_text(json.dumps(snapshot), encoding="utf-8")
-            env["MATH_BOOKS_TIMING_SNAPSHOT_PATH"] = str(snapshot_path)
+        staging_parent = manifest_path.parent
+        staging_parent.mkdir(parents=True, exist_ok=True)
+        if music_only:
+            if events is None:
+                events = timed_event_timeline(scenes)
+        else:
+            # Snapshot once; Manim must consume the exact word evidence bound by provenance.
+            if snapshot is None:
+                snapshot = timing_snapshot(manifest_path, manifest, base)
+            if events is None:
+                events = event_timeline(scenes, manifest, snapshot, topic.language)
+        with tempfile.TemporaryDirectory(dir=staging_parent) as staging:
+            if not music_only and snapshot is not None:
+                snapshot_path = Path(staging) / "timings.json"
+                snapshot_path.write_text(json.dumps(snapshot), encoding="utf-8")
+                env["MATH_BOOKS_TIMING_SNAPSHOT_PATH"] = str(snapshot_path)
             events_path = Path(staging) / "events.json"
             log_path = Path(staging) / "event_log.json"
             events_path.write_text(json.dumps(events), encoding="utf-8")
@@ -543,9 +601,15 @@ def extract_preview_frames(
     out_dir: Path,
     *,
     gap_s: float = 0.4,
+    scenes: list[dict] | None = None,
 ) -> list[Path]:
     """Extract 1 midpoint PNG frame per scene for visual QA."""
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest_path.is_file():
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    elif scenes is not None:
+        manifest = [{"id": s["id"], "duration": float(s["duration_s"])} for s in scenes]
+    else:
+        raise FileNotFoundError(f"Missing audio manifest: {manifest_path}")
     out_dir.mkdir(parents=True, exist_ok=True)
     frames: list[Path] = []
     cursor = 0.0
@@ -583,16 +647,27 @@ def build_video(topic_key: str, *, skip_render: bool = False, root: Path | None 
 
 
 def _build_video(topic_key: str, *, skip_render: bool = False, root: Path | None = None, language: str = "ru") -> dict:
-    """Run full video build: render silent Manim -> concat WAV -> mux -> verify."""
+    """Run full video build: render silent Manim -> concat WAV or music bed -> mux -> verify."""
     base = root or project_root()
     topic = get_topic(topic_key, language, base)
+    scenes = topic_scenes(topic, base)
+    music_only = _is_music_only(scenes)
     manifest_path = base / topic.video_dir / "audio" / "manifest.json"
     out_mp4 = base / topic.video_dir / topic.output_name
-    manifest = validate_topic_audio(topic, base)
-    snapshot = timing_snapshot(manifest_path, manifest, base) if topic.lesson_file else None
-    events = (
-        event_timeline(topic_scenes(topic, base), manifest, snapshot, topic.language) if snapshot is not None else {}
-    )
+    out_mp4.parent.mkdir(parents=True, exist_ok=True)
+    if music_only:
+        track_id = str(scenes[0]["music_track"])
+        track_path, track_meta = resolve_music_track(base, track_id)
+        manifest = [{"id": s["id"], "duration": float(s["duration_s"])} for s in scenes]
+        snapshot = None
+        events = timed_event_timeline(scenes)
+    else:
+        track_id = ""
+        track_path = None
+        track_meta = {}
+        manifest = validate_topic_audio(topic, base)
+        snapshot = timing_snapshot(manifest_path, manifest, base) if topic.lesson_file else None
+        events = event_timeline(scenes, manifest, snapshot, topic.language) if snapshot is not None else {}
     fingerprint = render_fingerprint(topic, base, manifest, snapshot=snapshot, events=events)
 
     if skip_render:
@@ -626,20 +701,37 @@ def _build_video(topic_key: str, *, skip_render: bool = False, root: Path | None
 
     with tempfile.TemporaryDirectory(dir=out_mp4.parent) as tmpdir:
         full_wav = Path(tmpdir) / f"{topic.key}_full_audio.wav"
-        audio_dur = concat_audio_from_manifest(manifest_path, full_wav)
-        print(f"Concatenated audio: {audio_dur:.2f}s")
+        if music_only:
+            assert track_path is not None
+            total_dur = sum(float(s["duration_s"]) for s in scenes) + 0.4 * max(0, len(scenes) - 1) + 0.3
+            audio_dur = render_music_bed(track_path, full_wav, total_dur)
+            print(f"Rendered music bed ({track_id}): {audio_dur:.2f}s")
+        else:
+            audio_dur = concat_audio_from_manifest(manifest_path, full_wav)
+            print(f"Concatenated audio: {audio_dur:.2f}s")
         candidate = Path(tmpdir) / out_mp4.name
         mux_audio_video(silent_mp4, full_wav, candidate)
         report = verify_video(candidate)
         if report["ok"]:
-            provenance = {
-                "fingerprint": fingerprint,
-                "audio_sha256": [
-                    hashlib.sha256((manifest_path.parent / s["wav"]).read_bytes()).hexdigest() for s in manifest
-                ],
-                "video_sha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
-                **({"events": event_records} if topic.lesson_file else {}),
-            }
+            if music_only:
+                provenance = {
+                    "fingerprint": fingerprint,
+                    "audio_mode": "music_only",
+                    "music_track": track_id,
+                    "music_sha256": track_meta["sha256"],
+                    "video_sha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
+                    **({"events": event_records} if topic.lesson_file else {}),
+                }
+            else:
+                provenance = {
+                    "fingerprint": fingerprint,
+                    "audio_sha256": [
+                        hashlib.sha256((manifest_path.parent / str(s["wav"])).read_bytes()).hexdigest()
+                        for s in manifest
+                    ],
+                    "video_sha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
+                    **({"events": event_records} if topic.lesson_file else {}),
+                }
             staged_provenance = Path(tmpdir) / "build.json"
             staged_provenance.write_text(json.dumps(provenance, indent=2))
             candidate.replace(out_mp4)

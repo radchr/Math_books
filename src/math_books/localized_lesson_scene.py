@@ -6,7 +6,7 @@ from pathlib import Path
 
 from manim import FadeIn, FadeOut, Group
 
-from math_books.cue_timeline import event_timeline, validate_event_log
+from math_books.cue_timeline import event_timeline, timed_event_timeline, validate_event_log
 from math_books.languages import validate_language
 from math_books.lessons import load_lesson
 from math_books.themes import get_theme
@@ -25,14 +25,20 @@ class LocalizedLessonScene(VerticalShortScene):
         snapshot_path = os.environ.get("MATH_BOOKS_TIMING_SNAPSHOT_PATH")
         self._timing_snapshot = json.loads(Path(snapshot_path).read_text(encoding="utf-8")) if snapshot_path else {}
         self._lesson_rows = load_lesson(root, path.stem, language)
-        self._manifest_path = Path(os.environ["MATH_BOOKS_MANIFEST_PATH"])
-        manifest = json.loads(self._manifest_path.read_text(encoding="utf-8"))
-        if any(item.get("language") != language for item in manifest):
-            raise ValueError("Render manifest language differs from lesson")
-        self._manifest_items = {item["id"]: item for item in manifest}
-        if [s["id"] for s in self._lesson_rows] != [s["id"] for s in manifest]:
-            raise ValueError("Render scene IDs differ from lesson")
-        expected_events = event_timeline(self._lesson_rows, manifest, self._timing_snapshot, language)
+        music_only = self._lesson_rows[0].get("audio_mode") == "music_only"
+        if music_only:
+            durations = {row["id"]: float(row["duration_s"]) for row in self._lesson_rows}
+            expected_events = timed_event_timeline(self._lesson_rows)
+        else:
+            self._manifest_path = Path(os.environ["MATH_BOOKS_MANIFEST_PATH"])
+            manifest = json.loads(self._manifest_path.read_text(encoding="utf-8"))
+            if any(item.get("language") != language for item in manifest):
+                raise ValueError("Render manifest language differs from lesson")
+            self._manifest_items = {item["id"]: item for item in manifest}
+            if [s["id"] for s in self._lesson_rows] != [s["id"] for s in manifest]:
+                raise ValueError("Render scene IDs differ from lesson")
+            durations = {item["id"]: float(item["duration"]) for item in manifest}
+            expected_events = event_timeline(self._lesson_rows, manifest, self._timing_snapshot, language)
         events_path = os.environ.get("MATH_BOOKS_EVENT_TIMELINE_PATH")
         self._event_timeline = (
             json.loads(Path(events_path).read_text(encoding="utf-8")) if events_path else expected_events
@@ -42,7 +48,7 @@ class LocalizedLessonScene(VerticalShortScene):
         self._event_records = []
         audio_offset = 0.0
         for index, row in enumerate(self._lesson_rows):
-            duration = float(self._manifest_items[row["id"]]["duration"])
+            duration = durations[row["id"]]
             start_frame = round(audio_offset * 30)
             end_frame = round((audio_offset + duration) * 30)
             if round(self.renderer.time * 30) != start_frame:

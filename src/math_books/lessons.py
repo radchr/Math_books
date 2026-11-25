@@ -7,9 +7,10 @@ import json
 import re
 from pathlib import Path
 
-from math_books.cue_timeline import localize_cues
+from math_books.cue_timeline import localize_cues, localize_timed_cues
 from math_books.languages import SUPPORTED_LANGUAGES, validate_language
 
+AUDIO_MODES = ("voiceover", "music_only")
 FORMULA_COMMANDS = {"frac", "times", "cdot", "sqrt", "ge", "le", "geq", "leq", "approx", "%"}
 
 
@@ -57,6 +58,16 @@ def validate_lesson_data(data: object, key: str, language: str = "ru", *, source
         get_theme(theme_name)
         lesson_theme = theme_name
 
+    audio_mode = data.get("audio_mode", "voiceover")
+    if audio_mode not in AUDIO_MODES:
+        raise ValueError(f"Unsupported audio_mode {audio_mode!r}; choose one of {', '.join(AUDIO_MODES)}")
+    music_track: str | None = None
+    if audio_mode == "music_only":
+        track = data.get("music_track")
+        if not isinstance(track, str) or not track.strip():
+            raise ValueError("music_only lessons require a non-empty music_track id")
+        music_track = track.strip()
+
     rows = data.get("scenes")
     if not isinstance(rows, list) or not rows:
         raise ValueError("Lesson must contain at least one scene")
@@ -75,12 +86,14 @@ def validate_lesson_data(data: object, key: str, language: str = "ru", *, source
         for lang, fields in translations.items():
             if not isinstance(fields, dict):
                 raise ValueError(f"{ident}/{lang}: expected text, title and body")
-            required_keys = {"text", "title", "body"}
-            allowed_keys = required_keys | {"labels"}
+            required_keys = {"title", "body"} if audio_mode == "music_only" else {"text", "title", "body"}
+            allowed_keys = {"text", "title", "body", "labels"}
             if not required_keys <= set(fields) or not set(fields) <= allowed_keys:
-                raise ValueError(f"{ident}/{lang}: expected text, title and body")
+                raise ValueError(f"{ident}/{lang}: expected {', '.join(sorted(required_keys))}")
             if any(not isinstance(fields[k], str) or not fields[k].strip() for k in required_keys):
                 raise ValueError(f"{ident}/{lang}: translation must not be empty")
+            if "text" in fields and (not isinstance(fields["text"], str) or not fields["text"].strip()):
+                raise ValueError(f"{ident}/{lang}: text must be a non-empty string when provided")
             if "labels" in fields:
                 labels = fields["labels"]
                 if not isinstance(labels, dict) or any(
@@ -108,12 +121,42 @@ def validate_lesson_data(data: object, key: str, language: str = "ru", *, source
             allowed_targets = spec.cue_targets
             visual_payload = {"template": spec.name, "params": params}
 
-        localized = {"id": ident, **translations[language], "formula": formula}
+        lang_fields = dict(translations[language])
+        if audio_mode == "music_only" and "text" not in lang_fields:
+            parts = [lang_fields["title"], lang_fields["body"]]
+            if isinstance(lang_fields.get("labels"), dict):
+                parts.extend(str(v) for v in lang_fields["labels"].values())
+            lang_fields["text"] = " ".join(parts)
+
+        localized: dict = {"id": ident, **lang_fields, "formula": formula}
         if visual_payload is not None:
             localized["visual"] = visual_payload
         if lesson_theme is not None:
             localized["theme"] = lesson_theme
-        if "cues" in row:
+        if audio_mode == "music_only":
+            raw_dur = row.get("duration_s")
+            if raw_dur is None:
+                max_words = max(
+                    len(f"{translations[lang]['title']} {translations[lang]['body']}".split())
+                    for lang in SUPPORTED_LANGUAGES
+                )
+                duration_s = round(max(3.5, max_words / 2.6 + 1.5), 2)
+            else:
+                if (
+                    isinstance(raw_dur, bool)
+                    or not isinstance(raw_dur, (int, float))
+                    or not (1.5 <= float(raw_dur) <= 30.0)
+                ):
+                    raise ValueError(f"{ident}: duration_s must be between 1.5 and 30.0 seconds")
+                duration_s = float(raw_dur)
+            localized["audio_mode"] = "music_only"
+            localized["music_track"] = music_track
+            localized["duration_s"] = duration_s
+            if "cues" in row:
+                localized["cues"] = localize_timed_cues(
+                    row["cues"], duration_s=duration_s, formula=formula, allowed_targets=allowed_targets
+                )
+        elif "cues" in row:
             localized["cues"] = localize_cues(
                 row["cues"], translations, language, formula=formula, allowed_targets=allowed_targets
             )

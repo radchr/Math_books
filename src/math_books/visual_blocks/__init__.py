@@ -73,11 +73,12 @@ def _ensure_all_loaded() -> None:
             challenge_card,
             compare_bars,
             hook_choice,
+            image_stage,
             step_chain,
             text_card,
         )
 
-        for module in (text_card, hook_choice, compare_bars, step_chain, challenge_card):
+        for module in (text_card, hook_choice, compare_bars, step_chain, challenge_card, image_stage):
             module.register()
     from math_books.packs import ensure_packs_loaded
 

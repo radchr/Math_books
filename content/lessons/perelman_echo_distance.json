@@ -1,0 +1,195 @@
+{
+  "schema_version": 1,
+  "topic": "perelman_echo_distance",
+  "domain": "core",
+  "theme": "science_lab",
+  "audio_mode": "music_only",
+  "music_track": "energetic_stem",
+  "scenes": [
+    {
+      "id": "01_hook",
+      "duration_s": 5.0,
+      "visual": {
+        "template": "hook_choice",
+        "params": {
+          "option_a": "opt_680",
+          "option_b": "opt_340",
+          "value_a": "680 m",
+          "value_b": "340 m"
+        }
+      },
+      "translations": {
+        "uk": {
+          "title": "Луна повернулась за 2 с",
+          "body": "Швидкість звуку 340 м/с. Яка відстань до скелі?",
+          "labels": {
+            "opt_680": "Варіант А: 340 × 2",
+            "opt_340": "Варіант Б: 340 × 2 ÷ 2"
+          }
+        },
+        "ru": {
+          "title": "Эхо вернулось через 2 с",
+          "body": "Скорость звука 340 м/с. Какое расстояние до скалы?",
+          "labels": {
+            "opt_680": "Вариант А: 340 × 2",
+            "opt_340": "Вариант Б: 340 × 2 ÷ 2"
+          }
+        },
+        "en": {
+          "title": "Echo Returns in 2 s",
+          "body": "Sound travels at 340 m/s. How far is the cliff?",
+          "labels": {
+            "opt_680": "Option A: 340 × 2",
+            "opt_340": "Option B: 340 × 2 ÷ 2"
+          }
+        }
+      }
+    },
+    {
+      "id": "02_diagram",
+      "duration_s": 5.5,
+      "formula": "d = \\frac{v \\cdot t}{2}",
+      "visual": {
+        "template": "image_stage",
+        "params": {
+          "image": "assets/diagrams/echo_wave.svg",
+          "caption_label": "wave_cap"
+        }
+      },
+      "cues": [
+        {
+          "id": "show_formula",
+          "target": "formula",
+          "at_s": 2.2
+        }
+      ],
+      "translations": {
+        "uk": {
+          "title": "Звук іде туди й назад",
+          "body": "За 2 секунди хвиля долає подвійний шлях.",
+          "labels": {
+            "wave_cap": "Туди (d) + назад (d) = 2d"
+          }
+        },
+        "ru": {
+          "title": "Звук идёт туда и обратно",
+          "body": "За 2 секунды волна проходит двойной путь.",
+          "labels": {
+            "wave_cap": "Туда (d) + обратно (d) = 2d"
+          }
+        },
+        "en": {
+          "title": "Sound Goes There and Back",
+          "body": "In 2 seconds the wave covers the distance twice.",
+          "labels": {
+            "wave_cap": "Out (d) + Back (d) = 2d"
+          }
+        }
+      }
+    },
+    {
+      "id": "03_calc",
+      "duration_s": 5.5,
+      "formula": "\\frac{340 \\cdot 2}{2} = 340",
+      "visual": {
+        "template": "step_chain",
+        "params": {
+          "steps": [
+            {
+              "label": "s1",
+              "value": "680 m"
+            },
+            {
+              "label": "s2",
+              "value": "÷ 2"
+            }
+          ],
+          "result": "340 m"
+        }
+      },
+      "cues": [
+        {
+          "id": "show_result",
+          "target": "result",
+          "at_s": 2.8
+        }
+      ],
+      "translations": {
+        "uk": {
+          "title": "Швидкий розрахунок",
+          "body": "Ділимо повний шлях звуку навпіл.",
+          "labels": {
+            "s1": "Повний шлях: 340 × 2",
+            "s2": "Лише в один бік"
+          }
+        },
+        "ru": {
+          "title": "Быстрый расчёт",
+          "body": "Делим полный путь звука пополам.",
+          "labels": {
+            "s1": "Полный путь: 340 × 2",
+            "s2": "Только в одну сторону"
+          }
+        },
+        "en": {
+          "title": "Quick Calculation",
+          "body": "Divide the round-trip distance in half.",
+          "labels": {
+            "s1": "Round trip: 340 × 2",
+            "s2": "One-way distance"
+          }
+        }
+      }
+    },
+    {
+      "id": "04_challenge",
+      "duration_s": 6.5,
+      "formula": "\\frac{340 \\cdot 4}{2} = 680",
+      "visual": {
+        "template": "challenge_card",
+        "params": {
+          "answer_label": "ans",
+          "limit_label": "lim"
+        }
+      },
+      "cues": [
+        {
+          "id": "show_answer",
+          "target": "answer",
+          "at_s": 3.4
+        },
+        {
+          "id": "show_formula",
+          "target": "formula",
+          "at_s": 3.4
+        }
+      ],
+      "translations": {
+        "uk": {
+          "title": "Твоя черга",
+          "body": "Луна повернулась через 4 секунди. Яка відстань до скелі?",
+          "labels": {
+            "ans": "680 метрів",
+            "lim": "Швидкість звуку 340 м/с — для сухого повітря при ~15°C."
+          }
+        },
+        "ru": {
+          "title": "Твой ход",
+          "body": "Эхо вернулось через 4 секунды. Какое расстояние до скалы?",
+          "labels": {
+            "ans": "680 метров",
+            "lim": "Скорость звука 340 м/с — для сухого воздуха при ~15°C."
+          }
+        },
+        "en": {
+          "title": "Your Turn",
+          "body": "The echo returns in 4 seconds. How far is the cliff?",
+          "labels": {
+            "ans": "680 meters",
+            "lim": "340 m/s assumes dry air around 15°C."
+          }
+        }
+      }
+    }
+  ]
+}

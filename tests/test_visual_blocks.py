@@ -173,6 +173,25 @@ def _sample_rows_for_all_blocks() -> dict[str, dict]:
                 "en": "Your team trails by three points.",
             },
         },
+        "image_stage": {
+            "id": "s_img",
+            "visual": {
+                "template": "image_stage",
+                "params": {"image": "assets/diagrams/echo_wave.svg", "caption_label": "cap"},
+            },
+            "title": {"uk": "Відбиття звукової хвилі", "ru": "Отражение звуковой волны", "en": "Sound Wave Reflection"},
+            "body": {
+                "uk": "Звук долає відстань туди і назад.",
+                "ru": "Звук проходит расстояние туда и обратно.",
+                "en": "Sound travels to the wall and back.",
+            },
+            "labels": {
+                "uk": {"cap": "Шлях луни дорівнює подвійній відстані (2d)."},
+                "ru": {"cap": "Путь эха равен двойному расстоянию (2d)."},
+                "en": {"cap": "The echo travels twice the distance (2d)."},
+            },
+            "formula": r"d = \frac{v \cdot t}{2}",
+        },
     }
 
 

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360">
+  <rect x="10" y="10" width="620" height="340" rx="24" fill="#1C2541" stroke="#5BC0BE" stroke-width="4"/>
+  <!-- Source / Person icon -->
+  <circle cx="95" cy="180" r="26" fill="#FFD166"/>
+  <circle cx="95" cy="180" r="46" fill="none" stroke="#5BC0BE" stroke-width="4" stroke-dasharray="10 8"/>
+  <!-- Outgoing sound wave -->
+  <path d="M 155 145 Q 250 105 345 145 T 500 145" fill="none" stroke="#5BC0BE" stroke-width="6" stroke-linecap="round"/>
+  <polygon points="505,145 485,134 485,156" fill="#5BC0BE"/>
+  <!-- Returning echo wave -->
+  <path d="M 500 215 Q 405 255 310 215 T 155 215" fill="none" stroke="#06D6A0" stroke-width="6" stroke-linecap="round"/>
+  <polygon points="150,215 170,204 170,226" fill="#06D6A0"/>
+  <!-- Cliff / Wall -->
+  <polygon points="525,65 595,65 595,295 525,295 540,235 520,175 538,115" fill="#3A506B" stroke="#FFD166" stroke-width="4"/>
+</svg>
