@@ -1,7 +1,7 @@
 # Math_books
 
 Tools and pipelines for:
-1. **STEM-Basketball Vertical Shorts (`9:16`, `1080×1920`, `30 fps`)** — engaging 55–70s Russian educational videos built with **Manim + Gemini TTS + ffmpeg**.
+1. **STEM-Basketball Vertical Shorts (`9:16`, `1080×1920`, `30 fps`)** — Russian legacy scenes and new Ukrainian/Russian/English declarative lessons built with **Manim + TTS + ffmpeg**.
 2. **Math Book Digitization** — merging scanned book HTML (`mathedu.ru`) with cropped figures from **MinerU** into clean Markdown.
 
 Latest reviewed test video (archived in `test_videos/`): [two free throws and the complement rule](test_videos/video_free_throws/free_throws.mp4)
@@ -15,15 +15,18 @@ New video generations start from a clean slate under `videos/video_<topic>/`.
 ```bash
 uv sync
 cp .env.example .env
-# Fill in GEMINI_API_KEY (and HF-TOKEN / OPENROUTER_API_KEY if needed)
+# Fill in GEMINI_API_KEY for Gemini TTS (digitize uses local inputs)
 ```
 
 System requirements: `ffmpeg`, `ffprobe`, and `pdflatex` (for Manim `MathTex`).
 
+See [review hardening and historical artifact status](docs/review-hardening.md)
+for read-only inventory, QA changes, and the pending `buzzer` math-check proposal.
+
 ## CLI Usage
 
 ```bash
-# List available video topics
+# Read-only topic inventory; existing media is unverified until explicit verify
 uv run math-books list
 
 # Required scientific/pedagogical check; exits 1 while any topic is blocked
@@ -35,8 +38,9 @@ uv run math-books review moneybart
 # Generate TTS audio (reuses only clips with matching provenance and checksum)
 uv run math-books tts moneybart
 
-# Generate Ukrainian TTS via multi-provider fallback (StyleTTS2 -> Piper -> Edge TTS)
-uv run math-books tts buzzer --provider uk --uk-profile tyshyn
+# For a NEW three-language lesson, after its Ukrainian editorial review passes:
+# (language_demo is a pending example, not an approved production lesson)
+uv run math-books tts language_demo --lang uk --provider uk --uk-profile tyshyn
 
 # Remove leading/trailing pauses from trusted clips, preserving internal pauses
 uv run math-books tts hothand --trim-edges

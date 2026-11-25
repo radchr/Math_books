@@ -6,6 +6,49 @@ from math_books.spoken_text import compare_transcript, normalize_spoken_text
 
 
 class TestMultilingualSpokenText(unittest.TestCase):
+    def test_minor_noncritical_spelling_substitution_can_pass_with_warning(self):
+        cases = {
+            "en": (
+                "Watch this friendly basketball example and then calculate the answer together with us",
+                "Watch this friendly basketbal example and then calculate the answer together with us",
+            ),
+            "uk": (
+                "Розглянь цей цікавий баскетбольний приклад та потім обчисли відповідь разом із нами",
+                "Розглянь цей цікавий баскетбольнийй приклад та потім обчисли відповідь разом із нами",
+            ),
+        }
+        for language, (expected, actual) in cases.items():
+            with self.subTest(language=language):
+                report = compare_transcript(expected, actual, language)
+                self.assertTrue(report["ok"], report["issues"])
+                self.assertTrue(report["warnings"])
+
+    def test_critical_small_substitutions_stay_protected_in_long_narration(self):
+        prefixes = {
+            "en": "Watch this friendly basketball example and then calculate the answer together with us",
+            "uk": "Розглянь цей цікавий баскетбольний приклад та потім обчисли відповідь разом із нами",
+            "ru": "Рассмотри этот интересный баскетбольный пример и затем вычисли ответ вместе с нами",
+        }
+        critical = {
+            "en": [
+                ("unless", "unles"),
+                ("not", "now"),
+                ("meters", "meterz"),
+                ("30", "31"),
+                ("independent", "dependent"),
+            ],
+            "uk": [("якщо", "якшо"), ("не", "це"), ("метрів", "метрівв"), ("30", "31"), ("незалежні", "залежні")],
+            "ru": [("если", "после"), ("не", "же"), ("метров", "секунд"), ("30", "31")],
+        }
+        for language, pairs in critical.items():
+            for expected, actual in pairs:
+                with self.subTest(language=language, expected=expected):
+                    report = compare_transcript(
+                        prefixes[language] + " " + expected, prefixes[language] + " " + actual, language
+                    )
+                    self.assertFalse(report["ok"])
+                    self.assertIn("Numbers, units, negation or scientific qualifiers do not match", report["issues"])
+
     def test_equivalent_numeric_forms(self):
         cases = {
             "uk": [

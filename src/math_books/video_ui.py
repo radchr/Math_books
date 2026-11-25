@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import re
@@ -201,7 +200,7 @@ class VerticalShortScene(Scene):
         if override:
             return Path(override)
         root = Path(__file__).resolve().parents[2]
-        from math_books.video_builder import VIDEO_TOPICS
+        from math_books.topics import VIDEO_TOPICS
 
         topic = next(
             (
@@ -228,43 +227,33 @@ class VerticalShortScene(Scene):
         fallback: float | None = None,
         after_s: float = 0.0,
     ) -> float | None:
-        """Look up the spoken start timestamp (in seconds) of `target_word` from the cached ASR QA receipt."""
+        """Read an exact optional cue from current, validated ASR evidence only."""
         manifest_path = getattr(self, "_manifest_path", None)
         items = getattr(self, "_manifest_items", None)
         if manifest_path is None or not items or scene_id not in items:
             return fallback
-        item = items[scene_id]
-        qa_dir = manifest_path.parent / "qa"
-        if not qa_dir.is_dir():
-            return fallback
-        wav_sha = item.get("wav_sha256")
-        if not wav_sha:
-            wav_file = manifest_path.parent / item["wav"]
-            if not wav_file.is_file():
+        from math_books.voiceover_qa import timing_snapshot
+
+        cached_path = getattr(self, "_timing_snapshot_path", None)
+        if cached_path == manifest_path and hasattr(self, "_timing_snapshot_cache"):
+            snapshot = self._timing_snapshot_cache
+        else:
+            try:
+                snapshot = timing_snapshot(manifest_path, list(items.values()), Path(__file__).resolve().parents[2])
+            except (OSError, ValueError, KeyError, TypeError):
                 return fallback
-            wav_sha = hashlib.sha256(wav_file.read_bytes()).hexdigest()
-        text_sha_prefix = hashlib.sha256(item.get("text", "").encode("utf-8")).hexdigest()[:16]
-        candidates = sorted(
-            qa_dir.glob(f"{wav_sha}-{text_sha_prefix}-*.json"),
-            key=lambda p: p.stat().st_mtime,
-            reverse=True,
-        )
-        if not candidates:
-            return fallback
-        try:
-            receipt = json.loads(candidates[0].read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            return fallback
-        norm_target = re.sub(r"[^а-яa-z0-9]+", "", target_word.lower().replace("ё", "е"))
+            self._timing_snapshot_path = manifest_path
+            self._timing_snapshot_cache = snapshot
+
+        def token(word: str) -> str:
+            return "".join(re.findall(r"[^\W_]+", word.casefold().replace("ё", "е")))
+
+        norm_target = token(target_word)
         if not norm_target:
             return fallback
-        for segment in receipt.get("segments", []):
-            for word_obj in segment.get("words", []):
-                raw_w = str(word_obj.get("word", "")).lower().replace("ё", "е")
-                clean_w = re.sub(r"[^а-яa-z0-9]+", "", raw_w)
-                start_t = float(word_obj.get("start", 0.0))
-                if start_t >= after_s and (clean_w == norm_target or clean_w.startswith(norm_target)):
-                    return start_t
+        for word in snapshot.get(scene_id, []):
+            if word["start"] >= after_s and token(word["word"]) == norm_target:
+                return float(word["start"])
         return fallback
 
     def check_frame_bounds(

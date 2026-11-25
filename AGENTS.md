@@ -3,7 +3,7 @@
 ## Overview
 This workspace contains tools and pipelines for:
 1. **STEM-Basketball Short Videos (9:16 vertical, 1080×1920):** Engaging 55–70s TikTok/Shorts-style educational videos in Russian for a 12-year-old boy who loves basketball, connecting NBA/court phenomena and classic math books (Ahrens 1924, Perelman 1925) to geometry, algebra, probability, and statistics.
-2. **Math Book Digitization:** Scripts for downloading scanned pages from `mathedu.ru`, cropping illustrations via Hugging Face `opendatalab/MinerU`, and assembling clean Markdown (`data/sample_md/`).
+2. **Math Book Digitization:** Local prototype merging previously downloaded `mathedu.ru` HTML/scans and MinerU JSON, cropping illustrations, and assembling Markdown (`data/sample_md/`). Acquisition/API integrations are not implemented by `digitize`.
 
 ## Tech Stack & Environment
 - **Package Manager:** `uv` (Python `>=3.13`, `.venv`)
@@ -12,13 +12,13 @@ This workspace contains tools and pipelines for:
 - **TTS & AI APIs (`.env` — never commit or print secrets):**
   - `GEMINI_API_KEY` — Gemini TTS (`gemini-3.8-flash-tts`, `gemini-2.5-flash-preview-tts`, `gemini-3.8-flash-lite-tts`)
   - Ukrainian multi-provider TTS fallback (`--provider uk`, `voice_profiles.toml`): `StyleTTS2` (`microgravity/styletts2-ukrainian`) → local `Piper` (`uk_UA-oleksa-high`) → `Edge TTS` (`uk-UA-OstapNeural`), with batch voice pinning and 24 kHz mono PCM WAV normalization
-  - `HF-TOKEN` — Hugging Face Spaces (`gradio_client` for `opendatalab/MinerU`; note hyphenated env var name)
-  - `OPENROUTER_API_KEY` — OpenRouter free vision/text models
+  - Historical acquisition experiments used `HF-TOKEN` / `OPENROUTER_API_KEY`; the current local `digitize` command does not consume these credentials.
 - **Quality Gate & CI:** `Justfile` (`just fix`, `just check`, `just test`, `just ci`), `.pre-commit-config.yaml`, `.github/workflows/ci.yml`, `ruff`, `ty` (Astral type checker), `unittest` + `hypothesis` property-based tests.
 
 ## Project Structure
 - `src/math_books/`
   - `cli.py` — Unified `math-books` CLI (`list`, `review`, `tts`, `verify-audio`, `build`, `verify`, `digitize`)
+  - `topics.py`, `media_io.py`, `pipeline_errors.py` — Shared topic metadata, low-level WAV/locking/atomic JSON I/O and exception identities without orchestration cycles
   - `content_review.py` — Offline scientific & pedagogical review gate validating `content_reviews/<topic>.json` dossiers and exact math checks
   - `voiceover_qa.py` & `spoken_text.py` — Local `faster-whisper` ASR verification gate, Russian number/morphology normalizer, and version-bound QA receipts (`audio/qa/`)
   - `lesson_math.py` — Exact mathematical example helpers shared between scenes, tests, and review checks
@@ -32,6 +32,7 @@ This workspace contains tools and pipelines for:
   - `generate_moneybart_tts.py` / `moneybart_scene.py` — MoneyBART expected value (`35% × 3 = 1.05 > 50% × 2 = 1.00`, `moneybart`)
   - `generate_hothand_tts.py` / `hothand_scene.py` — Hot Hand selection bias (`5/12` vs `1/2`, Miller & Sanjurjo 2018, `hothand`)
   - `generate_free_throws_tts.py` / `free_throws_scene.py` — Two free throws & complement rule (`1 - 0.3² = 91%`, `free_throws`)
+  - `generate_buzzer_tts.py` / `buzzer_scene.py` — Direct three-point shot versus an independent three-step chain (`30% > 24.5%`, `buzzer`)
   - `build_sample_md.py` — Book-to-Markdown + cropped figures pipeline (`--pages` and `--source-pages` CLI support)
 - `content_reviews/<topic>.json` — Version-bound scientific and pedagogical review dossiers (archived revisions in `content_reviews/history/`)
 - `tests/` — Unit and regression suites (`test_math_books.py`, `test_content_review.py`, `test_reliability.py`, `test_spoken_text.py`, `test_voiceover_qa.py`, `test_voiceover_pipeline.py`, `test_free_throws.py`, `test_lesson_math.py`)

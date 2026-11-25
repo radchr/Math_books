@@ -2,7 +2,6 @@
 
 import json
 import os
-import re
 import textwrap
 from pathlib import Path
 
@@ -70,18 +69,6 @@ class LocalizedLessonScene(VerticalShortScene):
             self.wait((remaining + 0.001) / 30)
         if round((self.renderer.time - self._segment_start) * 30) != target_frames:
             raise ValueError("Renderer did not reach the allocated audio endpoint")
-
-    def word_timestamp(
-        self, scene_id: str, target_word: str, *, fallback: float | None = None, after_s: float = 0.0
-    ) -> float | None:
-        def token(word: str) -> str:
-            return "".join(re.findall(r"[^\W\d_]+", word.casefold().replace("ё", "е")))
-
-        target = token(target_word)
-        for word in getattr(self, "_timing_snapshot", {}).get(scene_id, []):
-            if target and token(word["word"]) == target and word["start"] >= after_s:
-                return float(word["start"])
-        return fallback
 
     def show_card(self, row: dict, duration: float) -> None:
         title = Text(row["title"], font=FONT, font_size=40, color=ACCENT_GOLD)

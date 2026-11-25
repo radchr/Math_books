@@ -156,13 +156,64 @@ def normalize_spoken_text(text: str, language: str = "ru") -> list[str]:
     return tokens
 
 
-@lru_cache(maxsize=1)
-def _protected_words() -> set[str]:
+@lru_cache(maxsize=3)
+def _protected_words(language: str = "ru") -> set[str]:
+    # These bounded vocabularies deliberately list inflections rather than
+    # deriving semantic equivalence from spelling similarity. A tiny typo in
+    # a unit, condition or negation must still request review.
+    if language == "en":
+        return set(
+            (
+                "not no nor neither without independent dependent independence dependence exactly at least most "
+                "minimum maximum more less greater fewer equal equals equalities inequality inequalities "
+                "always never possible impossible before after until unless if then otherwise only except instead "
+                "above below under over within between all any each every none both either probability probabilities "
+                "chance chances average mean median sum total angle angles triangle triangles half third quarter "
+                "percent percentage percentages point points percentagepoint shot shots attempt attempts hit hits "
+                "miss misses meter meters metre metres centimeter centimeters centimetre centimetres kilometer "
+                "kilometers kilometre kilometres millimeter millimeters millimetre millimetres second seconds "
+                "minute minutes hour hours degree degrees kilogram kilograms gram grams dollar dollars euro euros "
+                "pound pounds year years ruble rubles hryvnia hryvnias cm mm km m s kg g plus minus multiply divided "
+                "division multiplication addition subtraction guaranteed guarantee guarantees certain uncertain "
+                "conditional unconditional positive negative increase decreases decrease increases true false "
+                "in on at into onto inside outside near far parallel perpendicular through along across "
+                "millisecond milliseconds microsecond microseconds nanosecond nanoseconds "
+                "micrometer micrometers micrometre micrometres nanometer nanometers nanometre nanometres "
+                "ms ns us μs µs hz khz mhz ghz volt volts watt watts joule joules newton newtons"
+            ).split()
+        )
+    if language == "uk":
+        return set(
+            (
+                "не ні немає без незалежний незалежна незалежне незалежні незалежних незалежності "
+                "залежний залежна залежне залежні залежних залежності рівно точно хоча щонайменше щонайбільше "
+                "мінімум максимум більше менше більший менший більша менша більші менші дорівнює рівний рівні "
+                "завжди ніколи можливий можлива можливе можливі неможливий неможлива неможливе неможливі "
+                "до після перед якщо коли доки поки інакше лише тільки крім замість понад нижче вище між "
+                "кожен кожна кожне кожні будь всі усі жоден жодна обидва обидві хоча б найменше найбільше "
+                "ймовірність ймовірності імовірність імовірності шанс шанси шансів середній середня середнє середні "
+                "сума суми кут кути кутів трикутник трикутники трикутника половина половини третина чверть "
+                "відсоток відсотка відсотки відсотків відсотковий пункт пункти пунктів очко очки очок "
+                "кидок кидки кидків кидка спроба спроби спроб попадання попадань промах промахи промахів "
+                "метр метра метри метрів сантиметр сантиметри сантиметрів міліметр міліметри міліметрів "
+                "кілометр кілометри кілометрів секунда секунди секунд хвилина хвилини хвилин година години годин "
+                "градус градуси градусів кілограм кілограми кілограмів грам грами грамів гривня гривні гривень "
+                "долар долари доларів євро рубль рублі рублів рік роки років см мм км м с кг г "
+                "гарантія гарантовано гарантує гарантований додатний від'ємний зростає зменшується істина хиба "
+                "на під над всередині зовні біля поруч через уздовж вздовж "
+                "паралельний паралельна паралельне паралельні перпендикулярний перпендикулярна перпендикулярне "
+                "перпендикулярні мілісекунда мілісекунди мілісекунд мікросекунда мікросекунди мікросекунд "
+                "наносекунда наносекунди наносекунд мікрометр мікрометри мікрометрів нанометр нанометри нанометрів "
+                "мс нс мкс гц кгц мгц ггц вольт вольти вольтів ват вати ватів джоуль джоулі джоулів "
+                "ньютон ньютони ньютонів"
+            ).split()
+        )
     words = (
         "равно не нет ни без независимый зависимый ровно хотя минимум максимум больше меньше всегда никогда "
         "возможный невозможный до после перед от только кроме вместо плюс минус умножить вычесть разделить "
         "процент пункт очко атака бросок попадание промах метр секунда градус рубль год раз клетка серия "
-        "половина треть четверть средний сумма угол треугольник орел решка вероятность шанс доля исход переход"
+        "половина треть четверть средний сумма угол треугольник орел решка вероятность шанс доля исход переход "
+        "если иначе пока когда каждый любой все никакой оба"
     )
     return {_morphology()[1].stemWord(_lemma(word)) for word in words.split()}
 
@@ -210,8 +261,11 @@ def compare_transcript(expected_text: str, transcript: str, language: str = "ru"
     )
 
     def protected(tokens):
+        vocabulary = _protected_words(language)
         return [
-            token for token in tokens if language != "ru" or token.startswith("#number:") or token in _protected_words()
+            token
+            for token in tokens
+            if token.startswith("#") or token in vocabulary or (len(token) == 1 and token.isalpha())
         ]
 
     issues = []
@@ -224,7 +278,7 @@ def compare_transcript(expected_text: str, transcript: str, language: str = "ru"
     if insertions or deletions:
         issues.append(f"Extra/missing speech: {insertions} inserted and {deletions} deleted tokens")
     similar = all(
-        (len(edit["expected"]) <= 2 and len(edit["actual"]) <= 2)
+        (language == "ru" and len(edit["expected"]) <= 2 and len(edit["actual"]) <= 2)
         or SequenceMatcher(None, edit["expected"], edit["actual"]).ratio() >= 0.8
         for edit in edits
         if edit["kind"] == "substitution"

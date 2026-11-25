@@ -22,6 +22,14 @@ topic-level final verification. Final verification reports editorial rejection b
 Supported arithmetic checks use exact fractions, never `eval`:
 
 ```json
+{"id": "chain", "kind": "independent_chain", "direct_probability": "3/10", "step_probabilities": ["7/10", "1/2", "7/10"], "expected_chain": "49/200", "expected_comparison": ">"}
+```
+
+`independent_chain` checks a nonempty product (up to 100 independent steps)
+and compares the direct probability with the exact product. It does not establish
+independence or validate the empirical input probabilities.
+
+```json
 {"id": "three_points", "kind": "expected_points", "probability": "0.35", "points": 3, "expected": "1.05"}
 ```
 

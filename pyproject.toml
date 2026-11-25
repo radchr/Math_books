@@ -12,13 +12,11 @@ dependencies = [
     "gradio-client>=2.7.2",
     "faster-whisper>=1.2.1",
     "httpx>=0.28.1",
-    "img2pdf>=0.6.3",
     "lxml>=6.0.0",
     "manim>=0.22.1",
     "numpy>=2.0.0",
     "num2words>=0.5.14",
     "pillow>=11.0.0",
-    "pydub>=0.25.1",
     "pymorphy3>=2.0.3",
     "python-dotenv>=1.2.4",
     "snowballstemmer>=3.0.1",
@@ -56,12 +54,6 @@ include = ["src/math_books/*_scene.py", "src/math_books/video_ui.py"]
 invalid-argument-type = "ignore"
 invalid-parameter-default = "ignore"
 not-iterable = "ignore"
-
-[[tool.ty.overrides]]
-include = ["src/math_books/voiceover_qa.py"]
-[tool.ty.overrides.rules]
-# Preserves exact voiceover_qa.py hash for existing verified QA receipts
-missing-union-attribute = "ignore"
 
 [[tool.ty.overrides]]
 include = ["tests/**"]

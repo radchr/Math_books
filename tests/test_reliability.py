@@ -413,7 +413,7 @@ class TestBuildSafety(unittest.TestCase):
                 report = video_builder.verify_topic_video(VIDEO_TOPICS["hothand"], root)
             self.assertFalse(report["ok"])
 
-    def test_topic_status_summary_requires_full_media_verification(self):
+    def test_topic_status_summary_does_not_claim_full_media_verification(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             topic, _ = self.valid_fixture(root)
@@ -433,15 +433,21 @@ class TestBuildSafety(unittest.TestCase):
             with patch(
                 "math_books.video_builder.verify_video",
                 return_value={"ok": False, "issues": ["Long audio silence detected: [2.5]"]},
-            ):
+            ) as media_check:
                 summary = video_builder.topic_status_summary(topic, root)
-            self.assertEqual(summary["video"], "stale")
+                media_check.assert_not_called()
+                full_report = video_builder.verify_topic_video(topic, root)
+                media_check.assert_called_once()
+            self.assertEqual(summary["video"], "unverified")
             self.assertFalse(summary["ready"])
+            self.assertFalse(full_report["ok"])
 
             with patch("math_books.video_builder.verify_video", return_value={"ok": True, "issues": []}):
                 summary_ok = video_builder.topic_status_summary(topic, root)
-            self.assertEqual(summary_ok["video"], "verified")
-            self.assertTrue(summary_ok["ready"])
+                full_report_ok = video_builder.verify_topic_video(topic, root)
+            self.assertEqual(summary_ok["video"], "unverified")
+            self.assertFalse(summary_ok["ready"])
+            self.assertTrue(full_report_ok["ok"])
 
     def valid_fixture(self, root):
         from math_books.voiceover_qa import model_cache, verify_clip
@@ -560,7 +566,7 @@ class TestMeasuredTiming(unittest.TestCase):
                 durations = scene._load_durations("video_buzzer")
             self.assertEqual(durations["01_hook"], 10.0)
 
-    def test_word_timestamp_reads_asr_receipt_and_falls_back_cleanly(self):
+    def test_word_timestamp_rejects_untrusted_bare_receipt(self):
         from math_books.video_ui import VerticalShortScene
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -599,8 +605,8 @@ class TestMeasuredTiming(unittest.TestCase):
             scene = VerticalShortScene.__new__(VerticalShortScene)
             with patch.dict("os.environ", {"MATH_BOOKS_MANIFEST_PATH": str(manifest_path)}):
                 scene._load_durations("video_buzzer")
-            self.assertAlmostEqual(scene.word_timestamp("05_challenge", "да", fallback=12.0, after_s=3.0), 14.78)
-            self.assertAlmostEqual(scene.word_timestamp("05_challenge", "пауза", fallback=12.0), 10.2)
+            self.assertAlmostEqual(scene.word_timestamp("05_challenge", "да", fallback=12.0, after_s=3.0), 12.0)
+            self.assertAlmostEqual(scene.word_timestamp("05_challenge", "пауза", fallback=12.0), 12.0)
             self.assertAlmostEqual(scene.word_timestamp("05_challenge", "несуществующее", fallback=12.34), 12.34)
 
     def test_check_frame_bounds_rejects_horizontal_and_vertical_overflow(self):

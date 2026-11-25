@@ -50,3 +50,8 @@ The mathematical comparison follows directly from the expectation of a Bernoulli
 - **Pending editorial dossiers (`status: pending`):** `basketball`, `ahrens`, `simpson`. In particular, the triangles script's idealized reflection and shooting-angle claims should receive a physics/source review (e.g., Fontanella *The Physics of Basketball*, Havelka *STEM in Basketball*) before publication.
 
 Use `uv run math-books list` for a unified per-topic report across `review`, `audio`, `video`, and `archived test` states.
+
+The list is a read-only inventory; `unverified` is presence, not proof of current
+media validity. Use explicit `verify-audio` / `verify` for full checks. Changes to
+shared UI and QA intentionally invalidate historical evidence; see
+[the 2026-11-25 hardening notes](review-hardening.md) before refreshing old artifacts.

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import dataclasses
+import fcntl
 import hashlib
-import importlib
 import json
 import math
 import os
@@ -12,134 +11,26 @@ import re
 import subprocess
 import tempfile
 import wave
+from contextlib import contextmanager
 from fractions import Fraction
 from pathlib import Path
 
 from math_books.content_review import check_content_review, require_content_review
 from math_books.cue_timeline import event_timeline, validate_event_log
 from math_books.languages import validate_language
-from math_books.lessons import discover_lessons, lesson_digest, lesson_path, load_lesson
-from math_books.tts_engine import audio_lock, valid_request_fingerprints, wav_duration
+from math_books.lessons import lesson_digest
+from math_books.media_io import atomic_json, audio_lock, wav_duration
+from math_books.topics import PRODUCTION_VIDEOS_DIR as PRODUCTION_VIDEOS_DIR
+from math_books.topics import TEST_VIDEOS_DIR as TEST_VIDEOS_DIR
+from math_books.topics import VIDEO_TOPICS as VIDEO_TOPICS
+from math_books.topics import VideoTopic as VideoTopic
+from math_books.topics import available_topics as available_topics
+from math_books.topics import get_topic as get_topic
+from math_books.topics import project_root as project_root
+from math_books.topics import topic_scenes as topic_scenes
+from math_books.tts_engine import valid_request_fingerprints
 from math_books.uk_tts_providers import build_ukrainian_providers, profile_fingerprint, validate_provider_timings
 from math_books.voiceover_qa import require_manifest_quality, timing_snapshot, verify_manifest
-
-
-@dataclasses.dataclass(frozen=True)
-class VideoTopic:
-    key: str
-    video_dir: str
-    scene_file: str
-    scene_class: str
-    output_name: str
-    tts_module: str
-    language: str = "ru"
-    lesson_file: str | None = None
-
-
-TEST_VIDEOS_DIR = "test_videos"
-PRODUCTION_VIDEOS_DIR = "videos"
-
-VIDEO_TOPICS: dict[str, VideoTopic] = {
-    "free_throws": VideoTopic(
-        key="free_throws",
-        video_dir="videos/video_free_throws",
-        scene_file="src/math_books/free_throws_scene.py",
-        scene_class="FreeThrowsBasketball",
-        output_name="free_throws.mp4",
-        tts_module="math_books.generate_free_throws_tts",
-    ),
-    "basketball": VideoTopic(
-        key="basketball",
-        video_dir="videos/video_basketball",
-        scene_file="src/math_books/basketball_triangles_scene.py",
-        scene_class="BasketballTriangles",
-        output_name="basketball_triangles.mp4",
-        tts_module="math_books.generate_tts",
-    ),
-    "ahrens": VideoTopic(
-        key="ahrens",
-        video_dir="videos/video_ahrens",
-        scene_file="src/math_books/ahrens_basketball_scene.py",
-        scene_class="AhrensBasketball",
-        output_name="ahrens_basketball.mp4",
-        tts_module="math_books.generate_ahrens_tts",
-    ),
-    "simpson": VideoTopic(
-        key="simpson",
-        video_dir="videos/video_simpson",
-        scene_file="src/math_books/simpson_basketball_scene.py",
-        scene_class="SimpsonBasketball",
-        output_name="simpson_basketball.mp4",
-        tts_module="math_books.generate_simpson_tts",
-    ),
-    "moneybart": VideoTopic(
-        key="moneybart",
-        video_dir="videos/video_moneybart",
-        scene_file="src/math_books/moneybart_scene.py",
-        scene_class="MoneyBartBasketball",
-        output_name="moneybart_basketball.mp4",
-        tts_module="math_books.generate_moneybart_tts",
-    ),
-    "hothand": VideoTopic(
-        key="hothand",
-        video_dir="videos/video_hothand",
-        scene_file="src/math_books/hothand_scene.py",
-        scene_class="HotHandBasketball",
-        output_name="hothand_basketball.mp4",
-        tts_module="math_books.generate_hothand_tts",
-    ),
-    "buzzer": VideoTopic(
-        key="buzzer",
-        video_dir="videos/video_buzzer",
-        scene_file="src/math_books/buzzer_scene.py",
-        scene_class="BuzzerBeaterBasketball",
-        output_name="buzzer_basketball.mp4",
-        tts_module="math_books.generate_buzzer_tts",
-    ),
-}
-
-
-def project_root() -> Path:
-    return Path(__file__).resolve().parents[2]
-
-
-def get_topic(key: str, language: str = "ru", root: Path | None = None) -> VideoTopic:
-    validate_language(language)
-    base = root or project_root()
-    if key in VIDEO_TOPICS:
-        if language != "ru":
-            raise ValueError(f"Legacy topic {key!r} has no {language} translation; create a new lesson")
-        return VIDEO_TOPICS[key]
-    path = lesson_path(base, key)
-    if not path.is_file():
-        raise ValueError(f"Unknown topic {key!r}; add content/lessons/{key}.json")
-    load_lesson(base, key, language)
-    return VideoTopic(
-        key,
-        f"videos/video_{key}/{language}",
-        "src/math_books/localized_lesson_scene.py",
-        "LocalizedLessonScene",
-        f"{key}.mp4",
-        "",
-        language,
-        str(path.relative_to(base)),
-    )
-
-
-def available_topics(root: Path, language: str = "ru") -> dict[str, VideoTopic]:
-    validate_language(language)
-    topics = dict(VIDEO_TOPICS) if language == "ru" else {}
-    for key in discover_lessons(root):
-        if key in VIDEO_TOPICS:
-            raise ValueError(f"New lesson collides with legacy topic: {key}")
-        topics[key] = get_topic(key, language, root)
-    return topics
-
-
-def topic_scenes(topic: VideoTopic, base: Path) -> list[dict]:
-    if topic.lesson_file is not None:
-        return load_lesson(base, topic.key, topic.language)
-    return importlib.import_module(topic.tts_module).SCENES
 
 
 def require_topic_review(topic: VideoTopic, base: Path) -> dict:
@@ -187,12 +78,13 @@ def _validate_batch_identity(topic: VideoTopic, manifest: list[dict]) -> None:
         raise ValueError("Future lesson audio mixes provider/model/voice identities")
 
 
-def validate_topic_audio(topic: VideoTopic, base: Path) -> list[dict]:
-    """Reject stale narration before spending time on a render."""
-    require_topic_review(topic, base)
+def _validate_audio_manifest(topic: VideoTopic, base: Path) -> list[dict]:
+    """Validate common provenance/media invariants without running or refreshing ASR."""
     path = base / topic.video_dir / "audio/manifest.json"
     manifest = json.loads(path.read_text(encoding="utf-8"))
     scenes = topic_scenes(topic, base)
+    if not isinstance(manifest, list) or not manifest or not all(isinstance(item, dict) for item in manifest):
+        raise ValueError("Audio manifest must be a nonempty list of clips")
     if [(s["id"], s["text"]) for s in manifest] != [(s["id"], s["text"]) for s in scenes]:
         raise ValueError(f"Stale script/audio manifest for {topic.key}; run math-books tts {topic.key}")
     for index, item in enumerate(manifest):
@@ -204,11 +96,18 @@ def validate_topic_audio(topic: VideoTopic, base: Path) -> list[dict]:
         duration = float(item["duration"])
         if not math.isfinite(duration) or duration <= 0 or abs(wav_duration(wav) - duration) > 0.001:
             raise ValueError(f"Stale audio duration for {item['id']}; refresh TTS")
-        if "wav_sha256" in item and hashlib.sha256(wav.read_bytes()).hexdigest() != item["wav_sha256"]:
+        if hashlib.sha256(wav.read_bytes()).hexdigest() != item["wav_sha256"]:
             raise ValueError(f"Stale audio checksum for {item['id']}; refresh TTS")
         validate_provider_timings(item, path.parent)
     _validate_batch_identity(topic, manifest)
-    require_manifest_quality(path, manifest, base)
+    return manifest
+
+
+def validate_topic_audio(topic: VideoTopic, base: Path) -> list[dict]:
+    """Reject stale narration before spending time on a render (caller holds audio lock)."""
+    require_topic_review(topic, base)
+    manifest = _validate_audio_manifest(topic, base)
+    require_manifest_quality(base / topic.video_dir / "audio/manifest.json", manifest, base)
     return manifest
 
 
@@ -229,24 +128,7 @@ def verify_topic_audio(topic: VideoTopic, base: Path, *, refresh: bool = False) 
         }
     with audio_lock(base / topic.video_dir / "audio"):
         try:
-            manifest = json.loads(path.read_text(encoding="utf-8"))
-            if [(s["id"], s["text"]) for s in manifest] != [(s["id"], s["text"]) for s in scenes]:
-                raise ValueError(f"Stale script/audio manifest for {topic.key}; run math-books tts {topic.key}")
-            for index, item in enumerate(manifest):
-                if not all(key in item for key in ("fingerprint", "wav_sha256", "model", "voice")):
-                    raise ValueError(
-                        f"Untrusted legacy audio for {topic.key}; regenerate with math-books tts {topic.key}"
-                    )
-                if item["fingerprint"] not in _expected_audio_fingerprints(topic, base, item, index):
-                    raise ValueError(f"Stale audio provenance for {item['id']}; regenerate TTS")
-                wav = path.parent / item["wav"]
-                duration = float(item["duration"])
-                if not math.isfinite(duration) or duration <= 0 or abs(wav_duration(wav) - duration) > 0.001:
-                    raise ValueError(f"Stale audio duration for {item['id']}; refresh TTS")
-                if hashlib.sha256(wav.read_bytes()).hexdigest() != item["wav_sha256"]:
-                    raise ValueError(f"Stale audio checksum for {item['id']}; refresh TTS")
-                validate_provider_timings(item, path.parent)
-            _validate_batch_identity(topic, manifest)
+            manifest = _validate_audio_manifest(topic, base)
             qa = verify_manifest(path, manifest, base, refresh=refresh)
             return {"topic": topic.key, "path": str(path), "editorial": editorial, **qa}
         except (OSError, ValueError, KeyError, TypeError) as error:
@@ -275,38 +157,103 @@ def render_fingerprint(
     return digest.hexdigest()
 
 
+@contextmanager
+def _read_status_lock(audio_dir: Path):
+    """Probe an existing writer lock without creating directories or a lock file.
+
+    With no existing lock there is no synchronized snapshot, so every presence
+    result remains explicitly unverified. Full verification uses audio_lock.
+    """
+    try:
+        lock = (audio_dir / ".pipeline.lock").open("rb")
+    except FileNotFoundError:
+        yield False
+        return
+    with lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_SH | fcntl.LOCK_NB)
+        except BlockingIOError:
+            yield True
+            return
+        try:
+            yield False
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
+
+
+def _audio_presence(topic: VideoTopic, base: Path, scenes: list[dict], approved: bool) -> str:
+    """Inspect cheap metadata/file presence only; do not decode, hash or run ASR."""
+    path = base / topic.video_dir / "audio/manifest.json"
+    if not path.is_file():
+        return "missing"
+    if not approved:
+        return "blocked"
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(manifest, list) or not manifest or not all(isinstance(item, dict) for item in manifest):
+            return "stale"
+        if [(item["id"], item["text"]) for item in manifest] != [(scene["id"], scene["text"]) for scene in scenes]:
+            return "stale"
+        for item in manifest:
+            if not all(key in item for key in ("fingerprint", "wav_sha256", "model", "voice")):
+                return "stale"
+            if item.get("language", "ru") != topic.language:
+                return "stale"
+            duration = float(item["duration"])
+            if not math.isfinite(duration) or duration <= 0:
+                return "stale"
+            wav = path.parent / item["wav"]
+            if not wav.resolve().is_relative_to(path.parent.resolve()) or not wav.is_file():
+                return "stale"
+        return "unverified"
+    except (OSError, ValueError, KeyError, TypeError):
+        return "stale"
+
+
+def _video_presence(topic: VideoTopic, base: Path, audio_state: str, approved: bool) -> str:
+    video = base / topic.video_dir / topic.output_name
+    if not video.is_file():
+        return "missing"
+    if not approved:
+        return "blocked"
+    if audio_state != "unverified":
+        return "stale"
+    try:
+        provenance = json.loads(video.with_suffix(".build.json").read_text(encoding="utf-8"))
+        if (
+            not isinstance(provenance, dict)
+            or not isinstance(provenance.get("fingerprint"), str)
+            or not isinstance(provenance.get("video_sha256"), str)
+            or not isinstance(provenance.get("audio_sha256"), list)
+        ):
+            return "stale"
+    except (OSError, ValueError, TypeError):
+        return "stale"
+    return "unverified"
+
+
 def topic_status_summary(topic: VideoTopic, base: Path) -> dict:
-    """Return a unified readiness summary across editorial review, audio QA, final video, and test archive."""
+    """Read-only inventory. ``unverified`` means present, never a readiness claim.
+
+    No WAV/MP4 contents are hashed or decoded, ASR receipts are not refreshed,
+    and no subprocess/lock-file creation occurs. Use verify[-audio] for proof.
+    """
     scenes = topic_scenes(topic, base)
     editorial = check_content_review(
         scenes, topic.video_dir, base, expected_scene_file=topic.scene_file, language=topic.language
     )
     review_state = "approved" if editorial["ok"] else "blocked"
 
-    manifest_path = base / topic.video_dir / "audio" / "manifest.json"
-    if not manifest_path.is_file():
-        audio_state = "missing"
-    elif not editorial["ok"]:
-        audio_state = "blocked"
-    else:
-        try:
-            validate_topic_audio(topic, base)
-            audio_state = "verified"
-        except (OSError, ValueError, KeyError, TypeError):
-            audio_state = "stale"
-
-    video_path = base / topic.video_dir / topic.output_name
-    build_json = video_path.with_suffix(".build.json")
-    if not video_path.is_file():
-        video_state = "missing"
-    elif not editorial["ok"] or audio_state != "verified" or not build_json.is_file():
-        video_state = "stale"
-    else:
-        try:
-            report = verify_topic_video(topic, base, check_silence=True)
-            video_state = "verified" if report["ok"] else "stale"
-        except (OSError, ValueError, KeyError, TypeError, subprocess.CalledProcessError):
-            video_state = "stale"
+    try:
+        with _read_status_lock(base / topic.video_dir / "audio") as busy:
+            if busy:
+                audio_state = video_state = "busy"
+            else:
+                audio_state = _audio_presence(topic, base, scenes, editorial["ok"])
+                video_state = _video_presence(topic, base, audio_state, editorial["ok"])
+    except OSError:
+        # Concurrent removal or inaccessible lock state must not crash list.
+        audio_state = video_state = "busy"
 
     test_mp4 = base / TEST_VIDEOS_DIR / Path(topic.video_dir).name / topic.output_name
     return {
@@ -319,7 +266,8 @@ def topic_status_summary(topic: VideoTopic, base: Path) -> dict:
         "test_archive": f"{TEST_VIDEOS_DIR}/{Path(topic.video_dir).name}/{topic.output_name}"
         if test_mp4.is_file()
         else None,
-        "ready": review_state == "approved" and audio_state == "verified" and video_state == "verified",
+        "ready": False,
+        "verification": "not_run",
     }
 
 
@@ -468,7 +416,7 @@ def render_silent_video(
     if not matches:
         raise FileNotFoundError(f"Rendered silent video {silent_name} not found in {media_dir}")
     if topic.lesson_file:
-        matches[0].with_suffix(".events.json").write_text(json.dumps(event_records), encoding="utf-8")
+        atomic_json(matches[0].with_suffix(".events.json"), event_records)
     return matches[0]
 
 
@@ -662,10 +610,9 @@ def _build_video(topic_key: str, *, skip_render: bool = False, root: Path | None
             raise ValueError("Stale or untracked silent render; rebuild without --skip-render")
     else:
         silent_mp4 = render_silent_video(topic, root=base, snapshot=snapshot, events=events)
-        silent_mp4.with_suffix(".render.json").write_text(
-            json.dumps(
-                {"fingerprint": fingerprint, "video_sha256": hashlib.sha256(silent_mp4.read_bytes()).hexdigest()}
-            )
+        atomic_json(
+            silent_mp4.with_suffix(".render.json"),
+            {"fingerprint": fingerprint, "video_sha256": hashlib.sha256(silent_mp4.read_bytes()).hexdigest()},
         )
 
     event_records = []

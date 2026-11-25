@@ -20,6 +20,8 @@ from collections.abc import Callable, Coroutine, Mapping
 from pathlib import Path
 from typing import Any, Protocol
 
+from math_books.pipeline_errors import RecognitionError, ReviewRequiredError
+
 
 class UkrainianVoiceProvider(Protocol):
     provider_id: str
@@ -317,8 +319,6 @@ class UkrainianFallbackTTS:
         self, text: str, out_wav: Path, *, validate: Callable[[Path], None] | None = None
     ) -> tuple[str, str]:
         """Synthesize text into a 24 kHz mono PCM WAV and return (provider_id, voice)."""
-        from math_books.voiceover_qa import RecognitionError, ReviewRequiredError
-
         if self.pinned_provider is not None:
             self.pinned_provider.synthesize_wav(text, out_wav)
             if validate is not None:

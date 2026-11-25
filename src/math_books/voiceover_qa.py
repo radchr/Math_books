@@ -14,19 +14,14 @@ from importlib.metadata import version
 from pathlib import Path
 
 from math_books.languages import validate_language
+from math_books.media_io import wav_duration
+from math_books.pipeline_errors import RecognitionError as RecognitionError
+from math_books.pipeline_errors import ReviewRequiredError as ReviewRequiredError
 from math_books.spoken_text import compare_transcript
 
 QA_POLICY_VERSION = 1
 ASR_MODEL = "base"
 ASR_MODELS = frozenset({"tiny", "base", "small", "medium", "large-v3", "tiny.en", "base.en", "small.en", "medium.en"})
-
-
-class RecognitionError(RuntimeError):
-    """The recognizer failed; this is not evidence of incorrect synthesized speech."""
-
-
-class ReviewRequiredError(RuntimeError):
-    """Evidence needs human review; automatic synthesis retries cannot resolve it."""
 
 
 def _sha(data: bytes) -> str:
@@ -210,9 +205,6 @@ def verify_clip(
 ) -> dict:
     """Recompute text comparison on cached evidence; never trust its saved ok flag."""
     language = validate_language(language)
-    # Imported lazily to avoid a synthesis/verification import cycle.
-    from math_books.tts_engine import wav_duration
-
     if wav_duration(wav_path) <= 0:
         raise ValueError(f"Empty narration WAV: {wav_path}")
     audio_hash = _sha(wav_path.read_bytes())
@@ -283,7 +275,7 @@ def verify_manifest(manifest_path: Path, manifest: list[dict], root: Path, *, re
             raise ValueError("Mixed narration languages in audio manifest")
     except ValueError as error:
         return {"ok": False, "issues": [str(error)], "clips": []}
-    clips = []
+    clips: list[dict] = []
     for item in manifest:
         try:
             language_options = {} if item.get("language", "ru") == "ru" else {"language": item["language"]}
@@ -329,8 +321,6 @@ def require_manifest_quality(manifest_path: Path, manifest: list[dict], root: Pa
 
 def timing_snapshot(manifest_path: Path, manifest: list[dict], root: Path) -> dict[str, list[dict]]:
     """Read current approved word evidence without recognition, refresh, or writes."""
-    from math_books.tts_engine import wav_duration
-
     languages = {validate_language(item.get("language", "ru")) for item in manifest}
     if len(languages) != 1:
         raise ValueError("Timing snapshot requires a nonempty, single-language manifest")

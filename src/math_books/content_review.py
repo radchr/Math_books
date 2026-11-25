@@ -185,6 +185,21 @@ def make_review_template(
 
 def _math_check(check: dict) -> dict:
     ident = check["id"]
+    if check.get("kind") == "independent_chain":
+        steps = check.get("step_probabilities")
+        if not isinstance(steps, list) or not 1 <= len(steps) <= 100:
+            raise ValueError(f"{ident}: provide 1–100 independent steps")
+        probabilities = [_fraction(value, f"{ident}.step_probabilities") for value in steps]
+        direct = _fraction(check["direct_probability"], f"{ident}.direct_probability")
+        _require(all(0 <= value <= 1 for value in [direct, *probabilities]), f"{ident}: invalid probability")
+        actual = math.prod(probabilities)
+        comparison = ">" if direct > actual else "<" if direct < actual else "="
+        _require(
+            actual == _fraction(check["expected_chain"], f"{ident}.expected_chain"),
+            f"{ident}: independent-chain product is wrong (actual {actual})",
+        )
+        _require(check.get("expected_comparison") == comparison, f"{ident}: incorrect direct/chain comparison")
+        return {"id": ident, "ok": True, "chain_probability": str(actual), "comparison": comparison}
     if check.get("kind") == "independent_attempts":
         probability = _fraction(check["probability"], f"{ident}.probability")
         attempts = check["attempts"]

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import base64
-import fcntl
 import hashlib
 import importlib
 import json
@@ -14,14 +13,17 @@ import tempfile
 import time
 import wave
 from collections.abc import Sequence
-from contextlib import contextmanager
 from pathlib import Path
+from urllib.parse import quote, quote_plus
 
 import httpx
 from dotenv import load_dotenv
 
 from math_books.content_review import require_content_review, script_digest
 from math_books.languages import validate_language
+from math_books.media_io import audio_lock as audio_lock
+from math_books.media_io import wav_duration as wav_duration
+from math_books.pipeline_errors import FatalTTSError as FatalTTSError
 from math_books.uk_tts_providers import (
     UkrainianFallbackTTS,
     build_ukrainian_providers,
@@ -39,33 +41,24 @@ SUPPORTED_PROMPT_REVISIONS = (PROMPT_REVISION, 1)
 RETRYABLE_HTTP_STATUSES = {404, 408, 429, 500, 502, 503, 504}
 
 
-class FatalTTSError(RuntimeError):
-    """Non-retryable client or authentication error from Gemini TTS."""
+def _redact_secret(message: str, api_key: str) -> str:
+    if api_key:
+        for value in {api_key, quote(api_key, safe=""), quote_plus(api_key)}:
+            message = message.replace(value, "[REDACTED]")
+    return message
 
 
-def wav_duration(wav_path: Path) -> float:
-    """Return duration of a WAV file in seconds."""
-    with wave.open(str(wav_path), "rb") as wf:
-        nframes = wf.getnframes()
-        pcm = wf.readframes(nframes)
-        if len(pcm) != nframes * wf.getnchannels() * wf.getsampwidth():
-            raise ValueError(f"Truncated WAV PCM: {wav_path}")
-        return nframes / float(wf.getframerate())
-
-
-@contextmanager
-def audio_lock(audio_dir: Path):
-    """Fail clearly instead of racing TTS, rendering and verification for one topic."""
-    audio_dir.mkdir(parents=True, exist_ok=True)
-    with (audio_dir / ".pipeline.lock").open("a") as lock:
-        try:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError as error:
-            raise RuntimeError("This topic is busy with another TTS/build/verify operation") from error
-        try:
-            yield
-        finally:
-            fcntl.flock(lock, fcntl.LOCK_UN)
+def _safe_gemini_error(error: Exception, api_key: str) -> Exception:
+    """Keep retry classification while removing credentials from surfaced errors."""
+    message = _redact_secret(str(error), api_key)
+    if message == str(error):
+        return error
+    if isinstance(error, httpx.HTTPStatusError):
+        request = httpx.Request(error.request.method, _redact_secret(str(error.request.url), api_key))
+        return httpx.HTTPStatusError(message, request=request, response=httpx.Response(error.response.status_code))
+    if isinstance(error, (httpx.RequestError, RuntimeError, ValueError)):
+        return type(error)(message)
+    return RuntimeError(message)
 
 
 def request_fingerprint(
@@ -161,7 +154,7 @@ def synthesize_gemini_tts(
     voice: str = "Puck",
 ) -> float:
     """Call Gemini TTS API and save WAV file, returning its duration in seconds."""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     payload = {
         "contents": [{"parts": [{"text": text}]}],
         "generationConfig": {
@@ -169,9 +162,12 @@ def synthesize_gemini_tts(
             "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}},
         },
     }
-    resp = httpx.post(url, json=payload, timeout=60)
+    try:
+        resp = httpx.post(url, headers={"x-goog-api-key": api_key}, json=payload, timeout=60)
+    except httpx.HTTPError as error:
+        raise _safe_gemini_error(error, api_key) from None
     if resp.status_code != 200:
-        msg = f"Gemini TTS failed ({resp.status_code}): {resp.text[:400]}"
+        msg = f"Gemini TTS failed ({resp.status_code}): {_redact_secret(resp.text, api_key)[:400]}"
         if resp.status_code not in RETRYABLE_HTTP_STATUSES and 400 <= resp.status_code < 500:
             raise FatalTTSError(msg)
         raise RuntimeError(msg)
@@ -187,7 +183,8 @@ def synthesize_gemini_tts(
             break
 
     if audio_bytes is None:
-        raise RuntimeError(f"No audio in response: {json.dumps(data, ensure_ascii=False)[:400]}")
+        detail = _redact_secret(json.dumps(data, ensure_ascii=False), api_key)[:400]
+        raise RuntimeError(f"No audio in response: {detail}")
 
     if "wav" in mime_type:
         out_wav.write_bytes(audio_bytes)
@@ -221,9 +218,8 @@ def generate_topic_tts(
     language = validate_language(language if language is not None else ("uk" if provider == "uk" else "ru"))
     if provider == "uk" and language != "uk":
         raise ValueError("The uk TTS provider requires language='uk'")
-    # Lazy import avoids a registry/engine import cycle while checking the real scene for known topics.
     from math_books.lessons import lesson_path
-    from math_books.video_builder import VIDEO_TOPICS, get_topic, topic_scenes
+    from math_books.topics import VIDEO_TOPICS, get_topic, topic_scenes
 
     topic = next(
         (
@@ -550,14 +546,14 @@ def _generate_batch(
                     )
                     last_error = None
                     break
-                except (RecognitionError, ReviewRequiredError, FatalTTSError):
-                    raise
+                except (RecognitionError, ReviewRequiredError, FatalTTSError) as error:
+                    raise _safe_gemini_error(error, api_key) from None
                 except (RuntimeError, ValueError, httpx.HTTPError) as error:
-                    last_error = error
+                    last_error = _safe_gemini_error(error, api_key)
                     if isinstance(error, ValueError) and attempt_idx >= 1:
                         break
             if last_error is not None:
-                raise last_error
+                raise last_error from None
             if language != "ru" or pin_model:
                 pinned_gemini_model = actual_model
             dur = wav_duration(staged_wav)
