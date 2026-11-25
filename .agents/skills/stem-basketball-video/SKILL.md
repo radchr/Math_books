@@ -123,13 +123,13 @@ Before generating any TTS audio or rendering Manim video, the topic must pass th
 
 1. **Generate Audio via CLI (with optional edge silence trimming):**
    ```bash
-   # Default: Gemini TTS (Russian scripts)
-   uv run math-books tts <topic> --trim-edges
+   # Default for all languages (uk/ru/en): Gemini TTS primary; for --lang uk auto-falls back to uk chain if Gemini is unavailable
+   uv run math-books tts <topic> --lang uk --trim-edges
 
-   # Ukrainian multi-provider fallback for a NEW three-language lesson (StyleTTS2 -> optional Piper -> Edge TTS)
+   # Force Ukrainian fallback chain explicitly (StyleTTS2 -> optional Piper -> Edge TTS)
    uv run math-books tts <topic> --lang uk --provider uk --uk-profile tyshyn --trim-edges
    ```
-   - **Gemini (`--provider gemini`, default):** Uses [tts_engine.py](../../../src/math_books/tts_engine.py): sends only raw narration text (`PROMPT_REVISION = 2`), passes `GEMINI_API_KEY` via `x-goog-api-key` header (redacted from errors), rotates `gemini-3.8-flash-tts` (clips 1–3) → `gemini-2.5-flash-preview-tts` / `gemini-3.8-flash-lite-tts` (clips 4–5), and retries transient `httpx.HTTPError` / rate limits while failing fast on 400/401/403.
+   - **Gemini (`--provider gemini`, primary default for `uk`/`ru`/`en`):** Uses [tts_engine.py](../../../src/math_books/tts_engine.py): sends only raw narration text (`PROMPT_REVISION = 2`), passes `GEMINI_API_KEY` via `x-goog-api-key` header (redacted from errors), rotates `gemini-3.8-flash-tts` (clips 1–3) → `gemini-2.5-flash-preview-tts` / `gemini-3.8-flash-lite-tts` (clips 4–5), and retries transient `httpx.HTTPError` / rate limits while failing fast on 400/401/403. For `--lang uk` without an explicit `--provider`, unavailability falls back automatically to the Ukrainian chain.
    - **Ukrainian Fallback (`--lang uk --provider uk`):** Uses [uk_tts_providers.py](../../../src/math_books/uk_tts_providers.py) and [voice_profiles.toml](../../../src/math_books/voice_profiles.toml) (`StyleTTS2` → optional local `Piper` → `Edge TTS`), pins the first working provider for the entire batch (never mixing voices mid-video), and normalizes every clip to 24 kHz mono 16-bit PCM WAV.
    - Writes immutable WAV files under `videos/video_<topic>/audio/clips/<id>-<fp>-<sha>.wav`, per-scene `.cache.json`, and `videos/video_<topic>/audio/manifest.json`.
    - **Automatic Local ASR Gate (`voiceover_qa.py`):** Every generated (or cached) clip is transcribed locally with the selected language/model and compared against the script. Unexpected added speech, repeated takes or altered numbers/negation/math terms block publication. English itself is valid for `en`. A retry must preserve the pinned batch identity; ASR unavailability must not trigger paid synthesis retries.

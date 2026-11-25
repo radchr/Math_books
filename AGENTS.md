@@ -10,8 +10,8 @@ This workspace contains tools and pipelines for:
 - **Video, Audio & Math Animation:** `manim==0.22.1`, `ffmpeg`/`ffprobe`, `latex`/`pdflatex`, stdlib `wave` + `numpy`, `pillow`
 - **Local Voiceover QA & Multilingual NLP:** `faster-whisper` (`base` int8 CPU for `ru`/`en`, `small` default for `uk`), `pymorphy3`, `num2words`, `snowballstemmer`, plus non-mutating PCM16 acoustic screening (`audio_quality.py`)
 - **TTS & AI APIs (`.env` — never commit or print secrets):**
-  - `GEMINI_API_KEY` — Gemini TTS (`gemini-3.8-flash-tts`, `gemini-2.5-flash-preview-tts`, `gemini-3.8-flash-lite-tts`), sent via `x-goog-api-key` header (never in URL query strings) with secret redaction on surfaced errors
-  - Ukrainian multi-provider TTS fallback (`--lang uk --provider uk`, `voice_profiles.toml`): `StyleTTS2` (`microgravity/styletts2-ukrainian`) → optional local `Piper` (`uk_UA-oleksa-high`, requires external `piper` package & local ONNX models) → `Edge TTS` (`uk-UA-OstapNeural`), with batch voice pinning and 24 kHz mono PCM WAV normalization
+  - `GEMINI_API_KEY` — Primary default TTS for all languages (`uk`, `ru`, `en`) via Gemini TTS (`gemini-3.8-flash-tts`, `gemini-2.5-flash-preview-tts`, `gemini-3.8-flash-lite-tts`), sent via `x-goog-api-key` header (never in URL query strings) with secret redaction on surfaced errors
+  - Ukrainian fallback TTS chain (used automatically for `--lang uk` only when Gemini is unavailable, or explicitly via `--lang uk --provider uk`, `voice_profiles.toml`): `StyleTTS2` (`microgravity/styletts2-ukrainian`) → optional local `Piper` (`uk_UA-oleksa-high`, requires external `piper` package & local ONNX models) → `Edge TTS` (`uk-UA-OstapNeural`), with batch voice pinning and 24 kHz mono PCM WAV normalization
   - Historical acquisition experiments used `HF-TOKEN` / `OPENROUTER_API_KEY`; the current local `digitize` command does not consume these credentials.
 - **Quality Gate & CI:** `Justfile` (`just fix`, `just check`, `just test`, `just ci`), `.pre-commit-config.yaml`, `.github/workflows/ci.yml`, `ruff`, `ty` (Astral type checker), `unittest` + `hypothesis` property-based tests.
 

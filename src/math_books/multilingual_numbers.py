@@ -120,10 +120,13 @@ DENOMINATORS = {
         "четверта": 4,
         "четвертих": 4,
         "десята": 10,
+        "десяту": 10,
         "десятих": 10,
         "сота": 100,
+        "соту": 100,
         "сотих": 100,
         "тисячна": 1000,
+        "тисячну": 1000,
         "тисячних": 1000,
         "десятитисячних": 10000,
         "стотисячних": 100000,
@@ -253,7 +256,7 @@ def normalize(text: str, language: str) -> list[str]:
         elif end < len(words) and words[end] in denominators:
             number /= denominators[words[end]]
             end += 1
-        elif language == "uk" and end < len(words) and words[end] in ("ціла", "цілих", "ціле", "цілі"):
+        elif language == "uk" and end < len(words) and words[end] in ("ціла", "цілу", "цілих", "ціле", "цілі"):
             start = end + 1
             if start < len(words) and words[start] in ("і", "й"):
                 start += 1

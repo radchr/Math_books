@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "topic": "hack_a_shaq_math",
+  "language": "uk",
+  "localized_content_sha256": "0d8e02967ac46977f9aac557a3a50b34df68b9ab92a185ec7366be24ba042857",
+  "script_sha256": "d2c43fcbed33bfe78caced8861c4b0bb6ee80217e0649d1e61bc8da57ba1b2ae",
+  "scene_file": "src/math_books/localized_lesson_scene.py",
+  "scene_sha256": "3d6a1124959eae3df141cf0456e832ce21e69c840d73b73ac51fb107dd2f762f",
+  "supporting_files": {
+    "src/math_books/lesson_math.py": "62de0619be031ffecf608750e1311166a9300eb3ca1834544fb276e1d1a39209",
+    "src/math_books/video_ui.py": "542a167a9e3957a003d251dae830457c76a810908ac1e6bc11cff7a39a4d6fe1"
+  },
+  "pedagogy": {
+    "audience_age": 12,
+    "learning_objective": "Compute and compare expected points per possession (E = p * points) to see why intentionally fouling a 50% free-throw shooter (1.00 expected points) beats defending a 1.10-point offense, while 60% free throws (1.20) reverse the decision.",
+    "prerequisites": [
+      "Percentages as fractions or decimals (50% = 0.5, 55% = 0.55, 60% = 0.6)",
+      "Multiplying and comparing decimal numbers"
+    ],
+    "assumptions": [
+      "Stipulated model inputs: opponent normal possession averages 1.10 points (55% on 2-point shots) and the fouled center shoots 50% on free throws",
+      "Expected value of two free throws equals the sum of individual expected values (linearity of expectation: 0.50 + 0.50 = 1.00)"
+    ],
+    "limitations": [
+      "The model ignores foul trouble, team bonus rules, and offensive rebounds after a missed second free throw",
+      "Expected value is a long-run average, not a guarantee of what happens on a single possession"
+    ],
+    "challenge": "Calculate expected points for two free throws at 60% accuracy (0.60 * 2 = 1.20) and decide whether intentional fouling still beats a 1.10-point offense.",
+    "expected_learning": "The learner computes expected points for free throws and normal possessions, compares 1.00 < 1.10 vs 1.20 > 1.10, and recognizes model boundaries."
+  },
+  "sources": [
+    {
+      "id": "openstax-expected-value",
+      "kind": "textbook",
+      "title": "OpenStax Introductory Statistics 2e, 4.2 Mean or Expected Value and Standard Deviation",
+      "url": "https://openstax.org/books/introductory-statistics-2e/pages/4-2-mean-or-expected-value-and-standard-deviation",
+      "locator": "Expected value of a discrete random variable E(X) = sum of x * P(x) and additivity across trials."
+    }
+  ],
+  "math_checks": [
+    {
+      "id": "normal-offense-ev",
+      "kind": "expected_points",
+      "probability": "55/100",
+      "points": 2,
+      "expected": "11/10"
+    },
+    {
+      "id": "foul-50-ev",
+      "kind": "expected_points",
+      "probability": "1/2",
+      "points": 2,
+      "expected": "1"
+    },
+    {
+      "id": "challenge-60-ev",
+      "kind": "expected_points",
+      "probability": "3/5",
+      "points": 2,
+      "expected": "6/5"
+    }
+  ],
+  "scene_reviews": [
+    {
+      "scene_id": "01_hook",
+      "teaching_role": "Introduce the counterintuitive intentional-foul tactic on a glowing arena scoreboard to spark a prediction.",
+      "claims": [
+        {
+          "statement": "Intentional fouling in basketball can be analyzed mathematically via expected points.",
+          "script_quote": "Навіщо тренери іноді навмисно порушують правила проти суперника та відправляють його на лінію штрафних? Здається, це подарунок, але за цим стоїть математика.",
+          "kind": "model",
+          "source_ids": [
+            "openstax-expected-value"
+          ],
+          "math_check_ids": [],
+          "reasoning": "Frames the tactical puzzle as a mathematical comparison of expected outcomes."
+        }
+      ]
+    },
+    {
+      "scene_id": "02_setup",
+      "teaching_role": "State explicit model parameters for normal defense (1.10 pts) vs fouling a 50% free-throw shooter.",
+      "claims": [
+        {
+          "statement": "In the stipulated model, a normal possession averages 1.10 points (55% on 2-point shots) and the center makes 50% of free throws.",
+          "script_quote": "Уявімо модель. Звичайна атака суперника приносить у середньому одну цілу і одну десяту бала. А їхній центровий влучає лише половину штрафних.",
+          "kind": "mathematical",
+          "source_ids": [
+            "openstax-expected-value"
+          ],
+          "math_check_ids": [
+            "normal-offense-ev"
+          ],
+          "reasoning": "Explicitly marks the numbers as model assumptions; 55/100 * 2 = 11/10 = 1.10."
+        }
+      ]
+    },
+    {
+      "scene_id": "03_chain",
+      "teaching_role": "Add the expected value of each 50% free throw step-by-step (0.50 + 0.50 = 1.00).",
+      "claims": [
+        {
+          "statement": "Two free throws at 50% each have a combined expected value of 0.50 + 0.50 = 1.00 point.",
+          "script_quote": "Перший штрафний дає половину очка, другий теж половину. Разом це рівно одне очко за атаку.",
+          "kind": "mathematical",
+          "source_ids": [
+            "openstax-expected-value"
+          ],
+          "math_check_ids": [
+            "foul-50-ev"
+          ],
+          "reasoning": "By linearity of expectation, E(FT1 + FT2) = 0.5 + 0.5 = 1.00 point."
+        }
+      ]
+    },
+    {
+      "scene_id": "04_compare",
+      "teaching_role": "Compare the two bar heights (1.00 vs 1.10) and quantify the 0.10-point model savings per possession.",
+      "claims": [
+        {
+          "statement": "1.00 expected point is less than 1.10 by 0.10 points per possession in the model.",
+          "script_quote": "Одне очко менше ніж одна ціла і одна десята. У цій моделі такий план економить нуль цілих і одну десяту за атаку.",
+          "kind": "mathematical",
+          "source_ids": [
+            "openstax-expected-value"
+          ],
+          "math_check_ids": [
+            "normal-offense-ev",
+            "foul-50-ev"
+          ],
+          "reasoning": "11/10 - 1 = 1/10 = 0.10 points saved per possession in expectation."
+        }
+      ]
+    },
+    {
+      "scene_id": "05_challenge",
+      "teaching_role": "Transfer expected value to a 60% shooter (1.20 > 1.10) and display the model limitation.",
+      "claims": [
+        {
+          "statement": "Two free throws at 60% accuracy average 0.60 * 2 = 1.20 points, which exceeds 1.10 so fouling is no longer advantageous in the model.",
+          "script_quote": "Твій хід. Якщо гравець влучає шістдесят відсотків штрафних, чи вигідно порушувати правила? Відповідь: ні, бо він набирає одну цілу і дві десятих очка.",
+          "kind": "mathematical",
+          "source_ids": [
+            "openstax-expected-value"
+          ],
+          "math_check_ids": [
+            "challenge-60-ev"
+          ],
+          "reasoning": "3/5 * 2 = 6/5 = 1.20 > 1.10; screen card also displays the foul-limit and rebound caveats."
+        }
+      ]
+    }
+  ],
+  "unresolved_issues": [],
+  "reviews": {
+    "scientific": {
+      "reviewer": "Antigravity AI scientific/pedagogical audit",
+      "reviewer_type": "ai",
+      "reviewed_at": "2026-11-25",
+      "verdict": "approved",
+      "dossier_sha256": "a08d925cd1c5186e861689c19fc5d0b0cbbfbca28550a06d10094ff280cd2350",
+      "criteria": {
+        "evidence_matches_claims": {
+          "passed": true,
+          "rationale": "All expected-value formulas follow OpenStax Introductory Statistics 2e section 4.2 and exact rational checks."
+        },
+        "calculations_correct": {
+          "passed": true,
+          "rationale": "Exact Fraction checks verify 55/100*2=11/10, 1/2*2=1, 11/10-1=1/10, and 3/5*2=6/5."
+        },
+        "assumptions_and_limits": {
+          "passed": true,
+          "rationale": "Model parameters are explicitly stated as assumptions; foul trouble, rebounds, and single-possession variance are listed as limitations and displayed on the challenge card."
+        },
+        "no_overclaim": {
+          "passed": true,
+          "rationale": "Every comparison is scoped to 'у цій моделі' and average expected points rather than guaranteed single-possession outcomes."
+        }
+      }
+    },
+    "pedagogical": {
+      "reviewer": "Antigravity AI scientific/pedagogical audit",
+      "reviewer_type": "ai",
+      "reviewed_at": "2026-11-25",
+      "verdict": "approved",
+      "dossier_sha256": "a08d925cd1c5186e861689c19fc5d0b0cbbfbca28550a06d10094ff280cd2350",
+      "criteria": {
+        "age_and_prerequisites": {
+          "passed": true,
+          "rationale": "Uses simple percentages (50%, 55%, 60%) and decimal comparison suitable for a 12-year-old basketball fan."
+        },
+        "objective_alignment": {
+          "passed": true,
+          "rationale": "All 5 scenes build directly toward computing and comparing expected points per possession."
+        },
+        "explanation_clarity": {
+          "passed": true,
+          "rationale": "Follows Predict -> Enactive/Iconic -> Symbolic -> Transfer flow with concrete Ukrainian phrasing and clean 9:16 modular visual blocks."
+        },
+        "challenge_checks_understanding": {
+          "passed": true,
+          "rationale": "The 60% free-throw transfer question reverses the conclusion (1.20 > 1.10) and directly tests whether the viewer can apply the threshold."
+        }
+      }
+    }
+  }
+}

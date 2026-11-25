@@ -1,0 +1,307 @@
+{
+  "schema_version": 1,
+  "id": "hack_a_shaq_math",
+  "status": "promoted",
+  "domain": "basketball",
+  "theme": "basketball_dark",
+  "audience": {
+    "min_age": 12,
+    "max_age": 12
+  },
+  "tags": [
+    "basketball",
+    "expected_value",
+    "probability",
+    "strategy",
+    "free_throws"
+  ],
+  "title": {
+    "uk": "Навіщо фолити навмисно? Математика штрафних",
+    "ru": "Зачем фолить специально? Математика штрафных",
+    "en": "Why Foul on Purpose? The Math of Intentional Fouls"
+  },
+  "summary": "Expected value comparison showing when intentionally fouling a 50% free-throw shooter (1.00 expected points) beats defending a 1.10-point offense, and why 60% free throws break the tactic (1.20 > 1.10).",
+  "source": {
+    "title": "OpenStax Introductory Statistics 2e, 4.2 Mean or Expected Value and Standard Deviation",
+    "locator": "Expected value of a discrete random variable E(X) = sum of x * P(x); linearity of expectation for two attempts.",
+    "url": "https://openstax.org/books/introductory-statistics-2e/pages/4-2-mean-or-expected-value-and-standard-deviation"
+  },
+  "core_concept": {
+    "model": "Compare expected points per possession: normal offense 55/100 * 2 = 11/10 (1.10) vs two 50% free throws 1/2 * 2 = 1.00; threshold check at 60% gives 3/5 * 2 = 6/5 (1.20).",
+    "templates_used": [
+      "basketball.scoreboard_duel",
+      "hook_choice",
+      "step_chain",
+      "compare_bars",
+      "challenge_card"
+    ]
+  },
+  "alt_hooks": [
+    {
+      "uk": "Дарувати супернику штрафні кидки — безумство чи холодний розрахунок?",
+      "ru": "Дарить сопернику штрафные броски — безумие или холодный расчёт?",
+      "en": "Giving your opponent free throws: madness or cold math?"
+    }
+  ],
+  "promoted_lesson": {
+    "topic": "hack_a_shaq_math",
+    "path": "content/lessons/hack_a_shaq_math.json",
+    "promoted_at": "2026-11-25T08:11:21.540472+00:00"
+  },
+  "lesson_draft": {
+    "schema_version": 1,
+    "topic": "hack_a_shaq_math",
+    "domain": "basketball",
+    "theme": "basketball_dark",
+    "scenes": [
+      {
+        "id": "01_hook",
+        "visual": {
+          "template": "basketball.scoreboard_duel",
+          "params": {
+            "score": "84 : 86",
+            "clock": "2:15"
+          }
+        },
+        "translations": {
+          "uk": {
+            "text": "Навіщо тренери іноді навмисно порушують правила проти суперника та відправляють його на лінію штрафних? Здається, це подарунок, але за цим стоїть математика.",
+            "title": "Фол як стратегія?",
+            "body": "Твоя команда програє два очки. Навіщо дарувати супернику штрафні?"
+          },
+          "ru": {
+            "text": "Зачем тренеры иногда специально фолят на сопернике и сами дарят ему два штрафных броска? Кажется, это подарок, но за этим стоит математика.",
+            "title": "Фол как стратегия?",
+            "body": "Твоя команда проигрывает два очка. Зачем дарить сопернику штрафные?"
+          },
+          "en": {
+            "text": "Why do coaches sometimes foul on purpose and hand the opponent two free throws? It looks like a gift, yet simple math explains the move.",
+            "title": "Fouling on Purpose?",
+            "body": "Your team trails by two points. Why give away free throws?"
+          }
+        }
+      },
+      {
+        "id": "02_setup",
+        "visual": {
+          "template": "hook_choice",
+          "params": {
+            "option_a": "opt_defense",
+            "option_b": "opt_foul",
+            "value_a": "1.10",
+            "value_b": "2 × 50%"
+          }
+        },
+        "translations": {
+          "uk": {
+            "text": "Уявімо модель. Звичайна атака суперника приносить у середньому одну цілу і одну десяту бала. А їхній центровий влучає лише половину штрафних.",
+            "title": "Два варіанти захисту",
+            "body": "Що вигідніше для твоєї команди за одне володіння?",
+            "labels": {
+              "opt_defense": "Звичайний захист (55% на 2 очки)",
+              "opt_foul": "Навмисний фол (2 штрафні по 50%)"
+            }
+          },
+          "ru": {
+            "text": "Представим модель. Обычная атака соперника приносит в среднем одну целую и одну десятую очка. А их центровой попадает лишь половину штрафных.",
+            "title": "Два варианта защиты",
+            "body": "Что выгоднее для твоей команды за одно владение?",
+            "labels": {
+              "opt_defense": "Обычная защита (55% на 2 очка)",
+              "opt_foul": "Специальный фол (2 штрафных по 50%)"
+            }
+          },
+          "en": {
+            "text": "Consider a simple model. A normal opponent possession averages one point one points. Meanwhile their center makes only half of his free throws.",
+            "title": "Two Defensive Choices",
+            "body": "Which option costs your team fewer points per possession?",
+            "labels": {
+              "opt_defense": "Normal defense (55% for 2 pts)",
+              "opt_foul": "Intentional foul (2 FTs at 50%)"
+            }
+          }
+        }
+      },
+      {
+        "id": "03_chain",
+        "formula": "0.5 + 0.5 = 1.00",
+        "visual": {
+          "template": "step_chain",
+          "params": {
+            "steps": [
+              {
+                "label": "ft_one",
+                "value": "0.50"
+              },
+              {
+                "label": "ft_two",
+                "value": "0.50"
+              }
+            ],
+            "result": "1.00"
+          }
+        },
+        "cues": [
+          {
+            "id": "show_result",
+            "target": "result",
+            "anchor": "start",
+            "occurrence": 1,
+            "phrases": {
+              "uk": "рівно",
+              "ru": "ровно",
+              "en": "exactly"
+            }
+          }
+        ],
+        "translations": {
+          "uk": {
+            "text": "Порахуємо середнє очікування. Перший штрафний дає половину очка, другий теж половину. Разом це рівно одне очко за атаку.",
+            "title": "Середня ціна фолу",
+            "body": "Складаємо очікувані очки кожного штрафного кидка.",
+            "labels": {
+              "ft_one": "Перший штрафний (50% × 1)",
+              "ft_two": "Другий штрафний (50% × 1)"
+            }
+          },
+          "ru": {
+            "text": "Посчитаем среднее ожидание. Первый штрафной даёт половину очка, второй тоже половину. Вместе это ровно одно очко за атаку.",
+            "title": "Средняя цена фола",
+            "body": "Складываем ожидаемые очки каждого штрафного броска.",
+            "labels": {
+              "ft_one": "Первый штрафной (50% × 1)",
+              "ft_two": "Второй штрафной (50% × 1)"
+            }
+          },
+          "en": {
+            "text": "Let us add the expected points. The first free throw averages half a point, and the second averages half a point. Together that is exactly one point.",
+            "title": "Average Cost of a Foul",
+            "body": "Add the expected value of each free throw.",
+            "labels": {
+              "ft_one": "First free throw (50% × 1)",
+              "ft_two": "Second free throw (50% × 1)"
+            }
+          }
+        }
+      },
+      {
+        "id": "04_compare",
+        "formula": "1.00 < 1.10",
+        "visual": {
+          "template": "compare_bars",
+          "params": {
+            "items": [
+              {
+                "id": "normal_attack",
+                "value": "11/10",
+                "color": "warning"
+              },
+              {
+                "id": "foul_tactic",
+                "value": "1",
+                "color": "positive"
+              }
+            ],
+            "unit": "",
+            "winner": "foul_tactic"
+          }
+        },
+        "cues": [
+          {
+            "id": "reveal_winner",
+            "target": "winner",
+            "anchor": "start",
+            "occurrence": 1,
+            "phrases": {
+              "uk": "менше",
+              "ru": "меньше",
+              "en": "less"
+            }
+          }
+        ],
+        "translations": {
+          "uk": {
+            "text": "Одне очко менше ніж одна ціла і одна десята. У цій моделі такий план економить нуль цілих і одну десяту за атаку.",
+            "title": "Порівняння в моделі",
+            "body": "Середні очки суперника за одне володіння (менше — краще для захисту).",
+            "labels": {
+              "normal_attack": "Звичайна атака",
+              "foul_tactic": "Тактика фолу"
+            }
+          },
+          "ru": {
+            "text": "Одно очко меньше чем одна целая и одна десятая. В этой модели фол экономит одну десятую очка на каждом владении.",
+            "title": "Сравнение в модели",
+            "body": "Средние очки соперника за одно владение (меньше — лучше для защиты).",
+            "labels": {
+              "normal_attack": "Обычная атака",
+              "foul_tactic": "Тактика фола"
+            }
+          },
+          "en": {
+            "text": "One point is less than one point one. In this model fouling saves one tenth of a point on each possession.",
+            "title": "Model Comparison",
+            "body": "Opponent expected points per possession (lower is better for defense).",
+            "labels": {
+              "normal_attack": "Normal offense",
+              "foul_tactic": "Foul tactic"
+            }
+          }
+        }
+      },
+      {
+        "id": "05_challenge",
+        "formula": "0.60 \\times 2 = 1.20",
+        "visual": {
+          "template": "challenge_card",
+          "params": {
+            "answer_label": "ans_value",
+            "limit_label": "limit_note"
+          }
+        },
+        "cues": [
+          {
+            "id": "reveal_answer",
+            "target": "answer",
+            "anchor": "start",
+            "occurrence": 1,
+            "phrases": {
+              "uk": "Відповідь",
+              "ru": "Ответ",
+              "en": "Answer"
+            }
+          }
+        ],
+        "translations": {
+          "uk": {
+            "text": "Твій хід. Якщо гравець влучає шістдесят відсотків штрафних, чи вигідно порушувати правила? Відповідь: ні, бо він набирає одну цілу і дві десятих очка.",
+            "title": "Перевір себе",
+            "body": "Гравець влучає 60% штрафних. Чи вигідно фолити проти атаки на 1.10 очка?",
+            "labels": {
+              "ans_value": "Ні! 1,20 > 1,10 очка",
+              "limit_note": "Модель не враховує ліміт фолів і підбирання після промаху."
+            }
+          },
+          "ru": {
+            "text": "Твой ход. Если игрок бьёт штрафные с точностью шестьдесят процентов, выгодно ли ещё фолить? Ответ: нет, ведь он приносит одну целую и две десятых очка.",
+            "title": "Проверь себя",
+            "body": "Игрок попадает 60% штрафных. Выгодно ли фолить против атаки на 1.10 очка?",
+            "labels": {
+              "ans_value": "Нет! 1,20 > 1,10 очка",
+              "limit_note": "Модель не учитывает лимит фолов и подбор после промаха."
+            }
+          },
+          "en": {
+            "text": "Your turn. If the player makes sixty percent of free throws, is fouling still worth it? Answer: no, because two free throws average one point two points.",
+            "title": "Your Turn",
+            "body": "The shooter makes 60% of free throws. Still foul against a 1.10 offense?",
+            "labels": {
+              "ans_value": "No! 1.20 > 1.10 pts",
+              "limit_note": "The model ignores foul trouble and offensive rebounds."
+            }
+          }
+        }
+      }
+    ]
+  }
+}

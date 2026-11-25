@@ -193,3 +193,49 @@ class MultilingualTTSTests(unittest.TestCase):
             self.assertEqual(len(manifest), 2)
             self.assertEqual([text for text, _ in attempts], ["Hello", "Again", "Again"])
             self.assertEqual(len({model for _, model in attempts}), 1)
+
+    def test_ukrainian_defaults_to_gemini_and_falls_back_only_when_unavailable(self):
+        from math_books.voiceover_qa import ReviewRequiredError
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scenes = [{"id": "a", "text": "Привіт"}]
+            uk_stub = Provider("uk_stub")
+            profile = VoiceProfile("tyshyn", "Test", "uk", ("uk_stub",))
+
+            # Missing GEMINI_API_KEY triggers fallback to uk provider chain when fallback_to_uk=True
+            with (
+                patch("math_books.tts_engine.require_content_review"),
+                patch("math_books.tts_engine._check_clip_qa"),
+                patch("math_books.tts_engine.build_ukrainian_providers", return_value=(profile, [uk_stub])),
+                patch.dict("os.environ", {}, clear=True),
+            ):
+                manifest = generate_topic_tts(
+                    scenes, "demo", language="uk", provider="gemini", fallback_to_uk=True, root=root, delay_s=0
+                )
+            self.assertEqual(manifest[0]["provider"], "uk")
+            self.assertEqual(manifest[0]["model"], "uk_stub")
+
+            # QA ReviewRequiredError must NOT silently fall back to uk provider
+            uk_stub.calls.clear()
+            with (
+                patch("math_books.tts_engine.require_content_review"),
+                patch(
+                    "math_books.tts_engine.synthesize_gemini_tts",
+                    side_effect=lambda t, p, *_a, **_kw: Provider("g").synthesize_wav(t, p),
+                ),
+                patch("math_books.tts_engine._check_clip_qa", side_effect=ReviewRequiredError("needs review")),
+                patch("math_books.tts_engine.build_ukrainian_providers", return_value=(profile, [uk_stub])),
+                patch.dict("os.environ", {"GEMINI_API_KEY": "test-key"}),
+            ):
+                with self.assertRaises(ReviewRequiredError):
+                    generate_topic_tts(
+                        scenes,
+                        "demo2",
+                        language="uk",
+                        provider="gemini",
+                        fallback_to_uk=True,
+                        root=root,
+                        delay_s=0,
+                    )
+            self.assertEqual(uk_stub.calls, [])

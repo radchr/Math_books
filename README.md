@@ -39,7 +39,10 @@ uv run math-books review moneybart
 uv run math-books tts moneybart
 
 # For a NEW three-language lesson, after its Ukrainian editorial review passes:
-# (language_demo is a pending example, not an approved production lesson)
+# Default uses Gemini TTS first, falling back to StyleTTS2 -> Piper -> Edge TTS only if Gemini is unavailable
+uv run math-books tts language_demo --lang uk --trim-edges
+
+# Force the Ukrainian fallback chain explicitly when desired:
 uv run math-books tts language_demo --lang uk --provider uk --uk-profile tyshyn
 
 # Remove leading/trailing pauses from trusted clips, preserving internal pauses

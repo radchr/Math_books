@@ -50,11 +50,12 @@ def cmd_tts(args: argparse.Namespace) -> int:
         topic.video_dir,
         force=args.force,
         trim_edges=args.trim_edges,
-        provider=args.provider or ("uk" if language == "uk" else "gemini"),
+        provider=args.provider or "gemini",
         uk_profile=args.uk_profile,
         language=language,
         voice=args.voice,
         pin_model=topic.lesson_file is not None,
+        fallback_to_uk=args.provider is None and language == "uk",
     )
     return 0
 
@@ -203,7 +204,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--provider",
         choices=("gemini", "uk"),
         default=None,
-        help="TTS backend (automatic: uk for Ukrainian, gemini for Russian/English)",
+        help="TTS backend (default: gemini; auto-falls back to uk chain for Ukrainian if unavailable)",
     )
     p_tts.add_argument("--uk-profile", default=None, help="Profile name in voice_profiles.toml when --provider uk")
     p_tts.add_argument("--voice", default="Puck", help="Gemini voice name")

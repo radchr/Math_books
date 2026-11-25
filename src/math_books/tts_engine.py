@@ -212,6 +212,7 @@ def generate_topic_tts(
     uk_profile: str | None = None,
     language: str | None = None,
     pin_model: bool = False,
+    fallback_to_uk: bool = False,
 ) -> list[dict]:
     """Generate (or reuse) WAV files for all scenes of a topic and write manifest.json."""
     project_root = root or Path(__file__).resolve().parents[2]
@@ -267,21 +268,43 @@ def generate_topic_tts(
         raise ValueError(f"Unsupported TTS provider '{provider}'. Choose 'gemini' or 'uk'.")
     # Immutable clip paths plus the final atomic manifest switch preserve previous batches.
     with audio_lock(audio_dir), tempfile.TemporaryDirectory(dir=audio_dir) as staging:
-        return _generate_batch(
-            scenes,
-            audio_dir,
-            Path(staging),
-            api_key,
-            force,
-            voice,
-            delay_s,
-            trim_edges,
-            project_root,
-            provider=provider,
-            uk_profile=uk_profile,
-            language=language,
-            pin_model=pin_model,
-        )
+        try:
+            return _generate_batch(
+                scenes,
+                audio_dir,
+                Path(staging),
+                api_key,
+                force,
+                voice,
+                delay_s,
+                trim_edges,
+                project_root,
+                provider=provider,
+                uk_profile=uk_profile,
+                language=language,
+                pin_model=pin_model,
+            )
+        except (RecognitionError, ReviewRequiredError, ValueError):
+            raise
+        except (FatalTTSError, RuntimeError, httpx.HTTPError) as error:
+            if not (fallback_to_uk and provider == "gemini" and language == "uk"):
+                raise
+            print(f"Gemini TTS unavailable ({error}); falling back to Ukrainian TTS chain.")
+            return _generate_batch(
+                scenes,
+                audio_dir,
+                Path(staging),
+                api_key,
+                force,
+                voice,
+                delay_s,
+                trim_edges,
+                project_root,
+                provider="uk",
+                uk_profile=uk_profile,
+                language=language,
+                pin_model=pin_model,
+            )
 
 
 def _write_immutable_evidence(path: Path, data: bytes) -> None:
