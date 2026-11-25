@@ -8,10 +8,13 @@ from pathlib import Path
 from manim import (
     DOWN,
     UP,
+    Circumscribe,
     FadeIn,
     FadeOut,
     Group,
     GrowFromEdge,
+    Indicate,
+    LaggedStart,
     MathTex,
     ReplacementTransform,
     TransformMatchingTex,
@@ -108,7 +111,7 @@ class LocalizedLessonScene(VerticalShortScene):
         for event in events:
             if event["target"] not in objects:
                 raise ValueError(f"Cue {event['id']} target {event['target']!r} not produced by {template!r}")
-        hidden = {event["target"] for event in events}
+        hidden = {event["target"] for event in events if event.get("action", "reveal") == "reveal"}
         if template == "equation_morph":
             # Subsequent morph states replace step_1 in place; never stack them simultaneously at t=0.
             for name in objects:
@@ -121,7 +124,10 @@ class LocalizedLessonScene(VerticalShortScene):
         initial_duration = min(0.6, duration / 2, events[0]["time"] if events else duration)
         initial_frames = int(initial_duration * 30)
         if visible and initial_frames >= 2:
-            self.play(*[FadeIn(mob, shift=UP * 0.2) for mob in visible], run_time=initial_frames / 30)
+            self.play(
+                LaggedStart(*[FadeIn(mob, shift=UP * 0.2) for mob in visible], lag_ratio=0.15),
+                run_time=initial_frames / 30,
+            )
         else:
             self.add(*visible)
         for idx, event in enumerate(events):
@@ -138,11 +144,20 @@ class LocalizedLessonScene(VerticalShortScene):
                 }
             )
             target = event["target"]
+            action = event.get("action", "reveal")
             mob = objects[target]
             next_boundary = events[idx + 1]["time"] if idx + 1 < len(events) else duration
             budget_s = next_boundary - (self.renderer.time - self._segment_start)
-            max_anim_frames = 15 if template == "equation_morph" and target.startswith("step_") else 10
+            max_anim_frames = 15 if (template == "equation_morph" and target.startswith("step_")) else 12
             anim_frames = min(max_anim_frames, max(0, int(budget_s * 30) - 1))
+            if action == "indicate":
+                if anim_frames >= 2:
+                    self.play(Indicate(mob, color=theme.secondary, scale_factor=1.08), run_time=anim_frames / 30)
+                continue
+            if action == "circumscribe":
+                if anim_frames >= 2:
+                    self.play(Circumscribe(mob, color=theme.secondary), run_time=anim_frames / 30)
+                continue
             if template == "equation_morph" and target.startswith("step_") and active_morph_step is not None:
                 prev_grp = objects[active_morph_step]
                 prev_tex = prev_grp[1] if len(prev_grp) > 1 and isinstance(prev_grp[1], MathTex) else None

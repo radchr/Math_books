@@ -162,6 +162,54 @@ def _sample_rows_for_all_blocks() -> dict[str, dict]:
             },
             "formula": "",
         },
+        "probability_area": {
+            "id": "s_prob",
+            "visual": {
+                "template": "probability_area",
+                "params": {
+                    "p_left": "7/10",
+                    "left_label": "hit1",
+                    "right_label": "miss1",
+                    "p_left_top": "7/10",
+                    "left_top_label": "hit2",
+                    "left_bottom_label": "miss2",
+                    "p_right_top": "7/10",
+                    "right_top_label": "hit2",
+                    "right_bottom_label": "miss2",
+                    "takeaway_label": "tk",
+                },
+            },
+            "title": {"uk": "Площа ймовірностей", "ru": "Площадь вероятностей", "en": "Probability Area"},
+            "body": {
+                "uk": "Площа кожної клітинки дорівнює точній ймовірності.",
+                "ru": "Площадь каждой ячейки равна точной вероятности.",
+                "en": "Each rectangle area equals its exact probability.",
+            },
+            "labels": {
+                "uk": {
+                    "hit1": "Влучив 1-й",
+                    "miss1": "Промах 1-й",
+                    "hit2": "Влучив 2-й",
+                    "miss2": "Промах 2-й",
+                    "tk": "Хоча б один: 91%",
+                },
+                "ru": {
+                    "hit1": "Попал 1-й",
+                    "miss1": "Промах 1-й",
+                    "hit2": "Попал 2-й",
+                    "miss2": "Промах 2-й",
+                    "tk": "Хотя бы один: 91%",
+                },
+                "en": {
+                    "hit1": "Make 1st",
+                    "miss1": "Miss 1st",
+                    "hit2": "Make 2nd",
+                    "miss2": "Miss 2nd",
+                    "tk": "At least one: 91%",
+                },
+            },
+            "formula": r"1 - 0.3^2 = 0.91",
+        },
         "basketball.half_court_diagram": {
             "id": "s_court",
             "visual": {

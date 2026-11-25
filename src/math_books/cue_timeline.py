@@ -9,6 +9,8 @@ from fractions import Fraction
 from math_books.languages import SUPPORTED_LANGUAGES, validate_language
 from math_books.spoken_text import normalize_spoken_text
 
+CUE_ACTIONS = ("reveal", "indicate", "circumscribe")
+
 
 def _contains(tokens: list[str], phrase: list[str]) -> int:
     return sum(tokens[i : i + len(phrase)] == phrase for i in range(len(tokens) - len(phrase) + 1))
@@ -26,15 +28,20 @@ def localize_cues(
     if not isinstance(cues, list):
         raise ValueError("Scene cues must be a list")
     valid_targets = allowed_targets if allowed_targets is not None else frozenset({"title", "body", "formula"})
-    ids, targets = set(), set()
+    ids, target_actions = set(), set()
     result = []
     for cue in cues:
-        if not isinstance(cue, dict) or set(cue) != {"id", "target", "anchor", "occurrence", "phrases"}:
+        required_keys = {"id", "target", "anchor", "occurrence", "phrases"}
+        allowed_keys = required_keys | {"action"}
+        if not isinstance(cue, dict) or not (required_keys <= set(cue) <= allowed_keys):
             raise ValueError("Cue requires id, target, anchor, occurrence and phrases")
         ident, target = cue["id"], cue["target"]
+        action = cue.get("action", "reveal")
+        if action not in CUE_ACTIONS:
+            raise ValueError(f"Unsupported cue action {action!r}; choose {', '.join(CUE_ACTIONS)}")
         if not isinstance(ident, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", ident) or ident in ids:
             raise ValueError("Invalid or duplicate cue ID")
-        if target not in valid_targets or target in targets:
+        if target not in valid_targets or (target, action) in target_actions:
             raise ValueError(f"Cue target must be unique and supported: {', '.join(sorted(valid_targets))}")
         if target == "formula" and not formula:
             raise ValueError("Cannot reveal an empty formula")
@@ -51,10 +58,13 @@ def localize_cues(
             if not normalized or _contains(script, normalized) < cue["occurrence"]:
                 raise ValueError(f"Cue {ident}: occurrence not found in {lang} narration")
         ids.add(ident)
-        targets.add(target)
-        result.append(
-            {key: cue[key] for key in ("id", "target", "anchor", "occurrence")} | {"phrase": phrases[language]}
-        )
+        target_actions.add((target, action))
+        localized_cue = {key: cue[key] for key in ("id", "target", "anchor", "occurrence")} | {
+            "phrase": phrases[language]
+        }
+        if action != "reveal":
+            localized_cue["action"] = action
+        result.append(localized_cue)
     return result
 
 
@@ -69,15 +79,20 @@ def localize_timed_cues(
     if not isinstance(cues, list):
         raise ValueError("Scene cues must be a list")
     valid_targets = allowed_targets if allowed_targets is not None else frozenset({"title", "body", "formula"})
-    ids, targets = set(), set()
+    ids, target_actions = set(), set()
     result = []
     for cue in cues:
-        if not isinstance(cue, dict) or set(cue) != {"id", "target", "at_s"}:
+        required_keys = {"id", "target", "at_s"}
+        allowed_keys = required_keys | {"action"}
+        if not isinstance(cue, dict) or not (required_keys <= set(cue) <= allowed_keys):
             raise ValueError("Timed cue requires id, target, and at_s")
         ident, target, at_s = cue["id"], cue["target"], cue["at_s"]
+        action = cue.get("action", "reveal")
+        if action not in CUE_ACTIONS:
+            raise ValueError(f"Unsupported cue action {action!r}; choose {', '.join(CUE_ACTIONS)}")
         if not isinstance(ident, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", ident) or ident in ids:
             raise ValueError("Invalid or duplicate cue ID")
-        if target not in valid_targets or target in targets:
+        if target not in valid_targets or (target, action) in target_actions:
             raise ValueError(f"Cue target must be unique and supported: {', '.join(sorted(valid_targets))}")
         if target == "formula" and not formula:
             raise ValueError("Cannot reveal an empty formula")
@@ -86,8 +101,11 @@ def localize_timed_cues(
         if not (0.0 <= float(at_s) < duration_s):
             raise ValueError(f"Cue {ident}: at_s={at_s} must be inside [0, {duration_s})")
         ids.add(ident)
-        targets.add(target)
-        result.append({"id": ident, "target": target, "at_s": float(at_s)})
+        target_actions.add((target, action))
+        localized_cue: dict = {"id": ident, "target": target, "at_s": float(at_s)}
+        if action != "reveal":
+            localized_cue["action"] = action
+        result.append(localized_cue)
     return result
 
 

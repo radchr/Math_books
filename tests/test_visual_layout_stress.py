@@ -190,6 +190,33 @@ class VisualLayoutStressTests(unittest.TestCase):
                     },
                 },
             },
+            "probability_area": {
+                "title": "Простір подій двох штрафних кидків",
+                "body": "Площа кожного прямокутника точно відповідає ймовірності сценарію.",
+                "formula": r"1 - 0.3^2 = 0.91",
+                "labels": {
+                    "hit1": "Влучив 1-й",
+                    "miss1": "Промах 1-й",
+                    "hit2": "Влучив 2-й",
+                    "miss2": "Промах 2-й",
+                    "tk": "Хоча б одне влучання: 91%",
+                },
+                "visual": {
+                    "template": "probability_area",
+                    "params": {
+                        "p_left": "7/10",
+                        "left_label": "hit1",
+                        "right_label": "miss1",
+                        "p_left_top": "7/10",
+                        "left_top_label": "hit2",
+                        "left_bottom_label": "miss2",
+                        "p_right_top": "7/10",
+                        "right_top_label": "hit2",
+                        "right_bottom_label": "miss2",
+                        "takeaway_label": "tk",
+                    },
+                },
+            },
             "basketball.scoreboard_duel": {
                 "title": "Останні секунди вирішального матчу",
                 "body": "Мінус три очки на табло: ризикувати дальнім кидком чи грати комбінацію?",
@@ -247,6 +274,28 @@ class VisualLayoutStressTests(unittest.TestCase):
         # Very short scene deduplicates close timestamps while preserving final
         short_points = video_builder._scene_keyframe_offsets(0.4, [], None)
         self.assertEqual([label for label, _ in short_points], ["final"])
+
+    def test_cue_actions_indicate_and_circumscribe_validate(self) -> None:
+        from math_books.cue_timeline import localize_timed_cues
+
+        cues = localize_timed_cues(
+            [
+                {"id": "c1", "target": "formula", "at_s": 1.0},
+                {"id": "c2", "target": "formula", "at_s": 2.0, "action": "indicate"},
+                {"id": "c3", "target": "body", "at_s": 3.0, "action": "circumscribe"},
+            ],
+            duration_s=4.0,
+            formula="x = 1",
+        )
+        self.assertNotIn("action", cues[0])
+        self.assertEqual(cues[1]["action"], "indicate")
+        self.assertEqual(cues[2]["action"], "circumscribe")
+        with self.assertRaisesRegex(ValueError, "Unsupported cue action"):
+            localize_timed_cues(
+                [{"id": "c1", "target": "body", "at_s": 1.0, "action": "explode"}],
+                duration_s=4.0,
+                formula="",
+            )
 
     def test_cli_build_parses_draft_flag(self) -> None:
         parser = cli.build_parser()

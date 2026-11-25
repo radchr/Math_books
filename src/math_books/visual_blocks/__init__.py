@@ -83,6 +83,7 @@ def _ensure_all_loaded() -> None:
             equation_morph,
             hook_choice,
             image_stage,
+            probability_area,
             step_chain,
             text_card,
         )
@@ -95,6 +96,7 @@ def _ensure_all_loaded() -> None:
             challenge_card,
             image_stage,
             equation_morph,
+            probability_area,
         ):
             module.register()
     from math_books.packs import ensure_packs_loaded
