@@ -69,7 +69,8 @@ description: >-
   - Числа озвучки й екрана мають спиратися на спільну перевірювану модель; для раціональної арифметики використовуй `fractions.Fraction`, для рівнянь, алгебри й фізичних формул — `SymPy`-чеки (`sympy_identity`, `sympy_solve`, `sympy_formula_eval`) із явними припущеннями домену та одиницями.
   - Ніякого `self.add_sound()`; аудіо зводиться окремо через `math-books build <topic>`.
 - **Модульні візуальні блоки та теми (`src/math_books/visual_blocks/`):**
-  - Перед тим як проєктувати кастомний Manim-код, розклади кожну сцену на наявні перевикористовувані блоки: `text_card`, `hook_choice`, `compare_bars`, `step_chain`, `challenge_card`, `image_stage` (SVG/PNG-схеми з `assets/diagrams/`), або доменні паки `packs/basketball/{half_court_diagram,scoreboard_duel}`.
+  - Перед тим як проєктувати кастомний Manim-код, розклади кожну сцену на наявні перевикористовувані блоки: `text_card`, `hook_choice`, `compare_bars`, `step_chain`, `challenge_card`, `image_stage` (SVG/PNG-схеми з `assets/diagrams/`), `equation_morph` (покрокове виведення формул із `TransformMatchingTex` і `formula_colors`), `probability_area` (2D-площі ймовірностей у стилі 3b1b `SampleSpace`), або доменні паки `packs/basketball/{half_court_diagram,scoreboard_duel}`.
+  - Плануй `cues` з діями `"reveal"` (анімована поява), `"indicate"` (пульс/підсвітка) або `"circumscribe"` (обведення рамкою).
   - Обери тему оформлення (`neutral_dark`, `science_lab`, `basketball_dark`).
 - **Режим `music_only` (фонова музика + написи без озвучки):**
   - Коротший темп: 20–45 с (3–5 сцен), явні `duration_s` і часові `cues`, ультрастислі титри (до 6–10 слів на картку) та опора на наочну схему (`image_stage` / `visual_blocks`).

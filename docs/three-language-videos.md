@@ -39,8 +39,11 @@ ASR, перевірку тексту, окремі review й артефакти.
 ```
 
 `anchor` — `start` або `end` фрази, `occurrence` — номер її повторення від 1.
-Кожен цільовий елемент має щонайбільше один маркер. Фрази перевіряються в усіх
-трьох сценаріях; маркер не може збігтися з частиною складеного числівника.
+Необов'язкове поле `action` (`"reveal"` за замовчуванням, `"indicate"`, `"circumscribe"`)
+дозволяє як анімовано проявляти елемент (`Write`, `GrowFromEdge`, `TransformMatchingTex`,
+`FadeIn`), так і акцентувати вже видимий елемент у потрібний момент. Пара `(target, action)`
+має бути унікальною в межах сцени. Фрази перевіряються в усіх трьох сценаріях;
+маркер не може збігтися з частиною складеного числівника.
 Якщо відповідного слова немає у перевірених ASR-таймінгах, збірка зупиняється.
 
 Рендер використовує заморожені ASR-таймінги й розклад подій. Час округлюється
@@ -92,6 +95,7 @@ uv run math-books review language_demo --lang uk --init
 uv run math-books review language_demo --lang uk
 # Після фактичного наукового й педагогічного схвалення поточного досьє:
 uv run math-books tts language_demo --lang uk --trim-edges
+uv run math-books build language_demo --lang uk --draft  # швидкий 540×960 драфт + прев'ю-кадри
 uv run math-books build language_demo --lang uk
 uv run math-books verify-audio language_demo --lang uk
 uv run math-books verify language_demo --lang uk --frames

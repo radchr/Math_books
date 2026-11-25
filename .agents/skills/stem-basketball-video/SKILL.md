@@ -19,7 +19,8 @@ For all new videos (general STEM — math, physics, chemistry, biology — or ST
    - Promote it to a declarative lesson: `uv run math-books bank promote <id>` → writes `content/lessons/<topic>.json` (with complete `uk/ru/en` translations).
    - Browse/search existing ideas with `uv run math-books bank list` / `search`.
 2. **Modular Visual Blocks & Themes (`src/math_books/visual_blocks/`):**
-   - Compose scenes from reusable blocks: `text_card`, `hook_choice`, `compare_bars`, `step_chain`, `challenge_card`, `image_stage` (for SVG/PNG diagrams in `assets/diagrams/`), and domain packs like `packs/basketball/{half_court_diagram,scoreboard_duel}`.
+   - Compose scenes from reusable blocks: `text_card`, `hook_choice`, `compare_bars`, `step_chain`, `challenge_card`, `image_stage` (for SVG/PNG diagrams in `assets/diagrams/`), `equation_morph` (`TransformMatchingTex` + `formula_colors`), `probability_area` (3b1b `SampleSpace`-style 2D probability partitions), and domain packs like `packs/basketball/{half_court_diagram,scoreboard_duel}`.
+   - Use `cues` with optional `"action": "reveal" | "indicate" | "circumscribe"` (`LocalizedLessonScene` animates `LaggedStart` entry, `Write`, `GrowFromEdge`, `TransformMatchingTex`, `Indicate`, and `Circumscribe`).
    - Pick a named theme: `neutral_dark`, `science_lab`, or `basketball_dark`.
 3. **Choose `audio_mode`:**
    - **`"voiceover"` (default, 55–70s):** Full narration in `uk`/`ru`/`en`, Gemini TTS primary (auto-fallback to `uk` chain for `--lang uk` if Gemini is unavailable), automatic local `faster-whisper` ASR QA (`small` for `uk`, `base` for `ru`/`en`), and word-level `cues`.

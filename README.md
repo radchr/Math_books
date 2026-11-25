@@ -13,7 +13,7 @@
 ## Ключові можливості
 
 - **Банк сценаріїв (`content/bank/`):** Git-версіоновані ідеї та чернетки уроків із тегами, доменами, першоджерелами та перебудовуваним SQLite-індексом пошуку (`.cache/bank.sqlite`). Промоція в урок однією командою (`math-books bank promote`).
-- **Модульні візуальні блоки (`src/math_books/visual_blocks/`):** перевикористовувані 9:16-компоненти (`text_card`, `hook_choice`, `compare_bars`, `step_chain`, `challenge_card`, `image_stage` для SVG/PNG-схем, а також доменний пак `packs/basketball/`) і теми оформлення (`neutral_dark`, `science_lab`, `basketball_dark`).
+- **Модульні візуальні блоки (`src/math_books/visual_blocks/`):** перевикористовувані 9:16-компоненти (`text_card`, `hook_choice`, `compare_bars`, `step_chain`, `challenge_card`, `image_stage`, `equation_morph` на базі `TransformMatchingTex` із `formula_colors`, `probability_area` у стилі 3b1b `SampleSpace`, а також доменний пак `packs/basketball/`) і теми оформлення (`neutral_dark`, `science_lab`, `basketball_dark`).
 - **Озвучка (`voiceover`) + локальний контроль якості:**
   - За замовчуванням для всіх мов (`uk`, `ru`, `en`) використовується **Gemini TTS**.
   - Для української мови (`--lang uk`) при недоступності Gemini автоматично вмикається резервний ланцюжок: **StyleTTS2 → локальний Piper → Edge TTS** (із фіксацією єдиного голосу на весь ролик і нормалізацією до 24 kHz mono PCM WAV).
@@ -23,7 +23,7 @@
   - Команда `math-books music` керує каталогом треків: локальна процедурна генерація (`procedural`), опційні AI-бекенди (`lyria`, `musicgen`, `ace_step`) та імпорт готових CC0 / royalty-free треків через `ffmpeg`.
 - **Обов'язковий науково-педагогічний гейт (`content_review.py`):**
   - Жоден ролик — **ні `voiceover`, ні `music_only`** — не може перейти до озвучки чи рендеру без схваленого досьє в `content_reviews/<lang>/<topic>.json`.
-  - Перевіряються точні обчислення (`CHECK_REGISTRY`), припущення, межі моделі (`limitations`), відповідність цитат (`script_quote`) і прив'язка схвалення до хешу поточної версії сценарію.
+  - Перевіряються точні обчислення (`CHECK_REGISTRY`, включно з безпечними AST-перевіреними `SymPy`-чекерами `sympy_identity`, `sympy_solve`, `sympy_formula_eval` із явними припущеннями домену), межі моделі (`limitations`), відповідність цитат (`script_quote`) і прив'язка схвалення до хешу поточної версії сценарію.
 
 ---
 
@@ -91,11 +91,14 @@ uv run math-books music import /path/to/track.mp3 --id upbeat_cc0 --license "CC0
 ### 4. Збірка та верифікація відео
 
 ```bash
-# Зібрати відео (рендер тихого Manim + аудіодоріжка / музична підкладка + mux + перевірка)
+# Швидкий драфт-рендер 540×960 для перевірки верстки та прев'ю-кадрів (не перезаписує продакшн MP4)
+uv run math-books build perelman_echo_distance --lang uk --draft
+
+# Зібрати фінальне 1080×1920 відео (рендер тихого Manim + аудіодоріжка / музична підкладка + mux + перевірка)
 uv run math-books build hack_a_shaq_math --lang uk
 uv run math-books build perelman_echo_distance --lang uk
 
-# Повна верифікація потоків, тривалості, provenance та витяг прев'ю-кадрів (preview_frames/)
+# Повна верифікація потоків, тривалості, provenance та витяг багатоточкових прев'ю-кадрів (preview_frames/)
 uv run math-books verify hack_a_shaq_math --lang uk --frames
 uv run math-books verify perelman_echo_distance --lang uk --frames
 ```
@@ -116,8 +119,8 @@ uv run math-books digitize --pages 14 --source-pages 13-16 --out-dir /tmp/page-1
 
 - **Незмінні аудіокліпи та кеш:** нові WAV-файли зберігаються в `videos/video_<topic>/<lang>/audio/clips/` із хешем тексту, голосу, моделі та вмісту файлу. Старі версії не перезаписуються; провалена генерація не ламає попередній `manifest.json`.
 - **Атомарність і блокування:** `tts`, `build` і `verify` беруть per-topic lock, щоб паралельні процеси не пошкодили артефакти.
-- **Контроль кадру `9:16` та таймінгу:** `VerticalShortScene._pad()` вимірює реальний час рендерера (блокує перевищення тривалості сцени) й автоматично перевіряє межі кадру (`|x| <= 4.35`, `y ∈ [-6.15, +7.45]`).
-- **Синхронізація появ:** декларативні уроки використовують явні `cues` ([`cue_timeline.py`](src/math_books/cue_timeline.py)) — за словами диктора (`voiceover`) або за секундами (`music_only`).
+- **Контроль кадру `9:16`, перетинів та таймінгу:** `VerticalShortScene._pad()` вимірює реальний час рендерера (блокує перевищення тривалості сцени) й автоматично перевіряє межі кадру (`|x| <= 4.35`, `y ∈ [-6.15, +7.45]`), а `LocalizedLessonScene` додатково запускає програмну перевірку перетинів `require_no_mobject_overlaps()`.
+- **Анімації та синхронізація появ:** декларативні уроки використовують каскадну появу `LaggedStart`, живі анімації (`TransformMatchingTex`, `Write`, `GrowFromEdge`, `FadeIn`) та явні `cues` ([`cue_timeline.py`](src/math_books/cue_timeline.py)) із діями `"reveal" | "indicate" | "circumscribe"` — за словами диктора (`voiceover`) або за секундами (`music_only`).
 - **Повний ланцюжок довіри (`provenance`):** `.render.json` і `.build.json` зв'язують хеші коду/уроку, аудіо й фінального `.mp4`. `--skip-render` спрацює лише за повного збігу вхідних даних. `math-books list` є суворо read-only і не сертифікує медіа — остаточним доказом готовності є `verify --frames` та візуальна інспекція кадрів.
 - **Рев'ю неможливо обійти:** ані `--force`, ані `--skip-render`, ані кеш аудіо не пропускають `content_review.py`. Схвалення не переноситься між мовами.
 
@@ -145,6 +148,7 @@ src/math_books/
 ├── cli.py                       # Єдиний CLI `math-books`
 ├── content_bank.py              # Банк сценаріїв + SQLite-індекс пошуку
 ├── content_review.py            # Науково-педагогічний гейт і CHECK_REGISTRY
+├── sympy_checks.py              # Безпечні символьні SymPy-перевірки (identity, solve, eval)
 ├── lessons.py                   # Декларативні тримовні уроки (voiceover / music_only)
 ├── localized_lesson_scene.py    # Універсальний Manim-рендерер модульних уроків
 ├── cue_timeline.py              # Таймлайни підказок (word cues / timed cues)
