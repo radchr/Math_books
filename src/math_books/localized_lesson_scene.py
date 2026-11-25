@@ -5,13 +5,29 @@ import os
 from fractions import Fraction
 from pathlib import Path
 
-from manim import FadeIn, FadeOut, Group
+from manim import (
+    DOWN,
+    UP,
+    FadeIn,
+    FadeOut,
+    Group,
+    GrowFromEdge,
+    MathTex,
+    ReplacementTransform,
+    TransformMatchingTex,
+    Write,
+)
 
 from math_books.cue_timeline import event_timeline, timed_event_timeline, validate_event_log
 from math_books.languages import validate_language
 from math_books.lessons import load_lesson
 from math_books.themes import get_theme
-from math_books.video_ui import VerticalShortScene, configure_vertical_9_16, require_no_mobject_overlaps
+from math_books.video_ui import (
+    DEFAULT_ALLOWED_OVERLAP_PAIRS,
+    VerticalShortScene,
+    configure_vertical_9_16,
+    require_no_mobject_overlaps,
+)
 from math_books.visual_blocks import get_visual_block
 
 configure_vertical_9_16()
@@ -84,25 +100,34 @@ class LocalizedLessonScene(VerticalShortScene):
         theme = get_theme(row.get("theme", "basketball_dark"))
         self.camera.background_color = theme.bg  # ty: ignore[invalid-assignment]
         template = row.get("visual", {}).get("template", "text_card")
-        objects = get_visual_block(template).build(theme, self._lesson_language, row)
-        require_no_mobject_overlaps(objects)
+        spec = get_visual_block(template)
+        objects = spec.build(theme, self._lesson_language, row)
+        require_no_mobject_overlaps(objects, allowed_pairs=DEFAULT_ALLOWED_OVERLAP_PAIRS | spec.allowed_overlap_pairs)
         # Bound the animation cost for short test clips; narration remains authoritative.
         events = self._event_timeline[row["id"]]
         for event in events:
             if event["target"] not in objects:
                 raise ValueError(f"Cue {event['id']} target {event['target']!r} not produced by {template!r}")
         hidden = {event["target"] for event in events}
+        if template == "equation_morph":
+            # Subsequent morph states replace step_1 in place; never stack them simultaneously at t=0.
+            for name in objects:
+                if name.startswith("step_") and name != "step_1":
+                    hidden.add(name)
         visible = [mob for name, mob in objects.items() if name not in hidden]
+        active_morph_step: str | None = (
+            "step_1" if template == "equation_morph" and "step_1" in objects and "step_1" not in hidden else None
+        )
         initial_duration = min(0.6, duration / 2, events[0]["time"] if events else duration)
-        if visible and initial_duration >= 1 / 30:
-            self.play(*[FadeIn(mob) for mob in visible], run_time=initial_duration)
+        initial_frames = int(initial_duration * 30)
+        if visible and initial_frames >= 2:
+            self.play(*[FadeIn(mob, shift=UP * 0.2) for mob in visible], run_time=initial_frames / 30)
         else:
             self.add(*visible)
-        for event in events:
+        for idx, event in enumerate(events):
             remaining = event["time"] - (self.renderer.time - self._segment_start)
             if remaining >= 1 / 30 - 1e-8:
                 self.wait((round(remaining * 30) + 0.001) / 30)
-            self.add(objects[event["target"]])
             self._event_records.append(
                 {
                     "scene_id": row["id"],
@@ -112,4 +137,42 @@ class LocalizedLessonScene(VerticalShortScene):
                     "global_frame": round(self.renderer.time * 30),
                 }
             )
+            target = event["target"]
+            mob = objects[target]
+            next_boundary = events[idx + 1]["time"] if idx + 1 < len(events) else duration
+            budget_s = next_boundary - (self.renderer.time - self._segment_start)
+            max_anim_frames = 15 if template == "equation_morph" and target.startswith("step_") else 10
+            anim_frames = min(max_anim_frames, max(0, int(budget_s * 30) - 1))
+            if template == "equation_morph" and target.startswith("step_") and active_morph_step is not None:
+                prev_grp = objects[active_morph_step]
+                prev_tex = prev_grp[1] if len(prev_grp) > 1 and isinstance(prev_grp[1], MathTex) else None
+                next_tex = mob[1] if len(mob) > 1 and isinstance(mob[1], MathTex) else None
+                if anim_frames >= 3 and prev_tex is not None and next_tex is not None:
+                    anims = [
+                        ReplacementTransform(prev_grp[0], mob[0]),
+                        TransformMatchingTex(prev_tex, next_tex),
+                    ]
+                    if len(prev_grp) > 2:
+                        anims.append(FadeOut(prev_grp[2]))
+                    if len(mob) > 2:
+                        anims.append(FadeIn(mob[2], shift=UP * 0.15))
+                    self.play(*anims, run_time=anim_frames / 30)
+                    self.remove(prev_grp)
+                    self.add(mob)
+                else:
+                    self.remove(prev_grp)
+                    self.add(mob)
+                active_morph_step = target
+            else:
+                if anim_frames >= 2:
+                    if target == "formula" or isinstance(mob, MathTex):
+                        self.play(Write(mob), run_time=anim_frames / 30)
+                    elif target.startswith("bar_"):
+                        self.play(GrowFromEdge(mob, DOWN), run_time=anim_frames / 30)
+                    else:
+                        self.play(FadeIn(mob, shift=UP * 0.25), run_time=anim_frames / 30)
+                else:
+                    self.add(mob)
+                if template == "equation_morph" and target.startswith("step_"):
+                    active_morph_step = target
         self._pad(duration)

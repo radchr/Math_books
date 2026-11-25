@@ -135,6 +135,33 @@ def _sample_rows_for_all_blocks() -> dict[str, dict]:
             },
             "formula": "0.8^3 = 0.512",
         },
+        "equation_morph": {
+            "id": "s_morph",
+            "visual": {
+                "template": "equation_morph",
+                "params": {
+                    "steps": [
+                        {"tex": r"d = \frac{v \cdot t}{2}", "note_label": "n1"},
+                        {"tex": r"d = \frac{340 \cdot 4}{2}", "note_label": "n2"},
+                        {"tex": "d = 680", "note_label": "n3"},
+                    ],
+                    "formula_colors": {"d": "positive", "v": "primary", "t": "secondary"},
+                    "result_label": "res",
+                },
+            },
+            "title": {"uk": "Виведення формули", "ru": "Вывод формулы", "en": "Formula Derivation"},
+            "body": {
+                "uk": "Плавна підстановка значень у формулу.",
+                "ru": "Плавная подстановка значений в формулу.",
+                "en": "Smooth substitution of values into the formula.",
+            },
+            "labels": {
+                "uk": {"n1": "Загальний вигляд", "n2": "Підстановка", "n3": "Результат", "res": "680 м"},
+                "ru": {"n1": "Общий вид", "n2": "Подстановка", "n3": "Результат", "res": "680 м"},
+                "en": {"n1": "General form", "n2": "Substitution", "n3": "Result", "res": "680 m"},
+            },
+            "formula": "",
+        },
         "basketball.half_court_diagram": {
             "id": "s_court",
             "visual": {

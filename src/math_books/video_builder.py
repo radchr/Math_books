@@ -481,6 +481,8 @@ def render_silent_video(
         topic.scene_class,
     ]
     env = {**os.environ}
+    if draft:
+        env["MATH_BOOKS_DRAFT"] = "1"
     if not music_only:
         env["MATH_BOOKS_MANIFEST_PATH"] = str(manifest_path)
     event_records = []
@@ -646,12 +648,12 @@ def _scene_keyframe_offsets(dur: float, scene_events: list[dict] | None, scene: 
     raw: list[tuple[str, float]] = [("start", start_t)]
     if scene_events:
         for ev in scene_events:
-            t = min(end_t, float(ev["time"]) + 0.15)
+            t = min(end_t, float(ev["time"]) + 0.55)
             raw.append((f"cue_{ev['id']}", t))
     elif scene and isinstance(scene.get("cues"), list):
         for cue in scene["cues"]:
             if "at_s" in cue:
-                t = min(end_t, float(cue["at_s"]) + 0.15)
+                t = min(end_t, float(cue["at_s"]) + 0.55)
                 raw.append((f"cue_{cue['id']}", t))
     raw.append(("final", end_t))
     deduped: list[tuple[str, float]] = []

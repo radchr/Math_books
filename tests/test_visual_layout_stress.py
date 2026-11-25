@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import shutil
 import tempfile
 import unittest
+from contextlib import nullcontext
 from pathlib import Path
 from unittest.mock import patch
 
@@ -12,6 +14,7 @@ from manim import config as manim_config
 from math_books import cli, lessons, video_builder
 from math_books.themes import get_theme
 from math_books.video_ui import (
+    DEFAULT_ALLOWED_OVERLAP_PAIRS,
     check_mobjects_frame_bounds,
     configure_vertical_9_16,
     find_mobject_overlaps,
@@ -45,6 +48,17 @@ class VisualLayoutStressTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Overlapping foreground mobjects"):
             require_no_mobject_overlaps({"a": a, "b": b})
         require_no_mobject_overlaps({"a": a, "c": c, "court": a})
+
+    @classmethod
+    def _tex_context(cls):
+        if shutil.which("latex") is not None:
+            return nullcontext()
+        from manim import Text
+
+        def fake_mathtex(tex: str, font_size: int = 44, **kwargs):
+            return Text(tex, font="DejaVu Sans", font_size=max(24, font_size - 8), color=kwargs.get("color", "#FFFFFF"))
+
+        return patch("manim.MathTex", side_effect=fake_mathtex)
 
     def test_all_registered_visual_blocks_pass_bounds_and_overlap_under_stress(self) -> None:
         theme = get_theme("science_lab")
@@ -147,6 +161,35 @@ class VisualLayoutStressTests(unittest.TestCase):
                     },
                 },
             },
+            "equation_morph": {
+                "title": "Покрокове виведення відстані до перешкоди",
+                "body": "Колір кожної величини зберігається під час плавної підстановки чисел.",
+                "labels": {
+                    "n1": "Загальна формула для луни (шлях туди й назад)",
+                    "n2": "Підставляємо швидкість звуку 340 м/с і час 4 с",
+                    "n3": "Точний результат без наближень",
+                    "res": "Відстань до скелі: 680 метрів",
+                },
+                "visual": {
+                    "template": "equation_morph",
+                    "params": {
+                        "steps": [
+                            {"tex": r"d = \frac{v \cdot t}{2}", "note_label": "n1"},
+                            {"tex": r"d = \frac{340 \cdot 4}{2}", "note_label": "n2"},
+                            {"tex": r"d = 680", "note_label": "n3"},
+                        ],
+                        "formula_colors": {
+                            "d": "positive",
+                            "v": "primary",
+                            "t": "secondary",
+                            "340": "primary",
+                            "4": "secondary",
+                            "680": "positive",
+                        },
+                        "result_label": "res",
+                    },
+                },
+            },
             "basketball.scoreboard_duel": {
                 "title": "Останні секунди вирішального матчу",
                 "body": "Мінус три очки на табло: ризикувати дальнім кидком чи грати комбінацію?",
@@ -160,23 +203,38 @@ class VisualLayoutStressTests(unittest.TestCase):
         registered = set(list_visual_blocks())
         self.assertEqual(registered, set(stress_cases), "Every registered visual block must have a layout stress case")
 
-        for name, row in stress_cases.items():
-            with self.subTest(block=name):
-                objects = get_visual_block(name).build(theme, "uk", row)
-                check_mobjects_frame_bounds(objects)
-                require_no_mobject_overlaps(objects)
+        with self._tex_context():
+            for name, row in stress_cases.items():
+                with self.subTest(block=name):
+                    spec = get_visual_block(name)
+                    objects = spec.build(theme, "uk", row)
+                    check_mobjects_frame_bounds(objects)
+                    require_no_mobject_overlaps(
+                        objects, allowed_pairs=DEFAULT_ALLOWED_OVERLAP_PAIRS | spec.allowed_overlap_pairs
+                    )
+
+    def test_latex_brace_balance_and_formula_colors_validation(self) -> None:
+        with self.assertRaisesRegex(ValueError, "unbalanced braces"):
+            lessons.validate_latex_formula(r"\frac{a+b}{c", "test")
+        with self.assertRaisesRegex(ValueError, "braced numerator"):
+            lessons.validate_latex_formula(r"\frac 1 2", "test")
+        self.assertEqual(lessons.validate_latex_formula(r"d = \frac{v \cdot t}{2}", "test"), r"d = \frac{v \cdot t}{2}")
 
     def test_all_production_lessons_pass_bounds_and_overlap_checks(self) -> None:
         root = video_builder.project_root()
-        for key in lessons.discover_lessons(root):
-            rows = lessons.load_lesson(root, key, "uk")
-            for row in rows:
-                template = row.get("visual", {}).get("template", "text_card")
-                theme = get_theme(row.get("theme", "basketball_dark"))
-                with self.subTest(lesson=key, scene=row["id"], template=template):
-                    objects = get_visual_block(template).build(theme, "uk", row)
-                    check_mobjects_frame_bounds(objects)
-                    require_no_mobject_overlaps(objects)
+        with self._tex_context():
+            for key in lessons.discover_lessons(root):
+                rows = lessons.load_lesson(root, key, "uk")
+                for row in rows:
+                    template = row.get("visual", {}).get("template", "text_card")
+                    spec = get_visual_block(template)
+                    theme = get_theme(row.get("theme", "basketball_dark"))
+                    with self.subTest(lesson=key, scene=row["id"], template=template):
+                        objects = spec.build(theme, "uk", row)
+                        check_mobjects_frame_bounds(objects)
+                        require_no_mobject_overlaps(
+                            objects, allowed_pairs=DEFAULT_ALLOWED_OVERLAP_PAIRS | spec.allowed_overlap_pairs
+                        )
 
     def test_multi_point_keyframes_capture_start_cues_and_final(self) -> None:
         points = video_builder._scene_keyframe_offsets(

@@ -55,6 +55,7 @@ class VisualBlockSpec:
     build: Callable[[VisualTheme, str, Mapping[str, Any]], dict[str, Any]]
     source_file: Path
     available_targets: Callable[[Mapping[str, Any], str], frozenset[str]] | None = None
+    allowed_overlap_pairs: frozenset[frozenset[str]] = frozenset()
 
     def resolve_cue_targets(self, params: Mapping[str, Any], formula: str) -> frozenset[str]:
         """Return cue targets actually produced for the given scene params and formula."""
@@ -79,13 +80,22 @@ def _ensure_all_loaded() -> None:
         from math_books.visual_blocks import (
             challenge_card,
             compare_bars,
+            equation_morph,
             hook_choice,
             image_stage,
             step_chain,
             text_card,
         )
 
-        for module in (text_card, hook_choice, compare_bars, step_chain, challenge_card, image_stage):
+        for module in (
+            text_card,
+            hook_choice,
+            compare_bars,
+            step_chain,
+            challenge_card,
+            image_stage,
+            equation_morph,
+        ):
             module.register()
     from math_books.packs import ensure_packs_loaded
 

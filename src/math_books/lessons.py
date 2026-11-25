@@ -14,6 +14,27 @@ AUDIO_MODES = ("voiceover", "music_only")
 FORMULA_COMMANDS = {"frac", "times", "cdot", "sqrt", "ge", "le", "geq", "leq", "approx", "%"}
 
 
+def validate_latex_formula(formula: object, context: str) -> str:
+    """Validate pure mathematical LaTeX notation, allowed commands, and balanced braces."""
+    if not isinstance(formula, str) or re.search(r"[^0-9A-Za-z\\{}_^=+*/().,%<>!| \-]", formula):
+        raise ValueError(f"{context}: use pure mathematical notation in formula")
+    if set(re.findall(r"\\([A-Za-z]+|%)", formula)) - FORMULA_COMMANDS:
+        raise ValueError(f"{context}: unsupported LaTeX command in formula")
+    depth = 0
+    for ch in formula:
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth < 0:
+                raise ValueError(f"{context}: unbalanced braces in formula")
+    if depth != 0:
+        raise ValueError(f"{context}: unbalanced braces in formula")
+    if re.search(r"\\frac\s*(?!\{)", formula):
+        raise ValueError(f"{context}: \\frac requires braced numerator and denominator")
+    return formula
+
+
 def lesson_path(root: Path, key: str) -> Path:
     if not re.fullmatch(r"[a-z][a-z0-9_]*", key):
         raise ValueError(f"Invalid lesson topic {key!r}")
@@ -106,11 +127,17 @@ def validate_lesson_data(data: object, key: str, language: str = "ru", *, source
                     for k, v in labels.items()
                 ):
                     raise ValueError(f"{ident}/{lang}: labels must map non-empty keys to non-empty strings")
-        formula = row.get("formula", "")
-        if not isinstance(formula, str) or re.search(r"[^0-9A-Za-z\\{}_^=+*/().,%<>!| \-]", formula):
-            raise ValueError(f"{ident}: use pure mathematical notation in formula")
-        if set(re.findall(r"\\([A-Za-z]+|%)", formula)) - FORMULA_COMMANDS:
-            raise ValueError(f"{ident}: unsupported LaTeX command in formula")
+        formula = validate_latex_formula(row.get("formula", ""), ident)
+        formula_colors = row.get("formula_colors")
+        if formula_colors is not None:
+            from math_books.themes import validate_color_role
+
+            if not isinstance(formula_colors, dict) or len(formula_colors) > 12:
+                raise ValueError(f"{ident}: formula_colors must be an object with at most 12 entries")
+            for tex_key, role in formula_colors.items():
+                if not isinstance(tex_key, str) or not tex_key.strip():
+                    raise ValueError(f"{ident}: formula_colors keys must be non-empty TeX strings")
+                validate_color_role(role, f"{ident}.formula_colors[{tex_key}]")
 
         allowed_targets: frozenset[str] | None = None
         visual_payload: dict | None = None
@@ -134,6 +161,8 @@ def validate_lesson_data(data: object, key: str, language: str = "ru", *, source
             lang_fields["text"] = " ".join(parts)
 
         localized: dict = {"id": ident, **lang_fields, "formula": formula}
+        if formula_colors:
+            localized["formula_colors"] = dict(formula_colors)
         if visual_payload is not None:
             localized["visual"] = visual_payload
         if lesson_theme is not None:

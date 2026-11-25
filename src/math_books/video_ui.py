@@ -125,9 +125,13 @@ def require_no_mobject_overlaps(
 
 
 def configure_vertical_9_16() -> None:
-    """Configure Manim for 1080x1920 (9:16) 30 fps vertical shorts."""
-    config.pixel_width = 1080
-    config.pixel_height = 1920
+    """Configure Manim for 1080x1920 (or 540x960 draft) 30 fps vertical shorts."""
+    if os.environ.get("MATH_BOOKS_DRAFT") == "1":
+        config.pixel_width = 540
+        config.pixel_height = 960
+    else:
+        config.pixel_width = 1080
+        config.pixel_height = 1920
     config.frame_width = 9.0
     config.frame_height = 16.0
     config.frame_rate = 30
