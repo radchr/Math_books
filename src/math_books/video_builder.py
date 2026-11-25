@@ -450,9 +450,14 @@ def concat_audio_from_manifest(
 
 
 def render_silent_video(
-    topic: VideoTopic, root: Path | None = None, *, snapshot: dict | None = None, events: dict | None = None
+    topic: VideoTopic,
+    root: Path | None = None,
+    *,
+    snapshot: dict | None = None,
+    events: dict | None = None,
+    draft: bool = False,
 ) -> Path:
-    """Render silent 9:16 Manim video and return path to the rendered MP4."""
+    """Render silent 9:16 Manim video (full 1080x1920 or fast 540x960 draft) and return MP4 path."""
     base = root or project_root()
     scenes = topic_scenes(topic, base)
     music_only = _is_music_only(scenes)
@@ -463,12 +468,13 @@ def render_silent_video(
     )
     manifest_path = (base / topic.video_dir / "audio" / "manifest.json").resolve()
     media_dir = base / topic.video_dir / "media"
-    silent_name = f"{topic.key}_silent.mp4"
+    silent_name = f"{topic.key}_draft_silent.mp4" if draft else f"{topic.key}_silent.mp4"
     cmd = [
         "manim",
         "render",
         "--media_dir",
         str(media_dir),
+        *(["-r", "540,960"] if draft else []),
         "-o",
         silent_name,
         str(base / topic.scene_file),
@@ -542,7 +548,12 @@ def mux_audio_video(silent_mp4: Path, audio_wav: Path, out_mp4: Path) -> None:
     subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
 
 
-def verify_video(mp4_path: Path, *, check_silence: bool = True) -> dict:
+def verify_video(
+    mp4_path: Path,
+    *,
+    check_silence: bool = True,
+    expected_resolution: tuple[int, int] = (1080, 1920),
+) -> dict:
     """Inspect rendered MP4 via ffprobe (and optional ffmpeg silencedetect)."""
     if not mp4_path.exists():
         raise FileNotFoundError(f"Video not found: {mp4_path}")
@@ -567,7 +578,7 @@ def verify_video(mp4_path: Path, *, check_silence: bool = True) -> dict:
     if not v_stream:
         issues.append("Missing video stream")
     else:
-        if (v_stream.get("width"), v_stream.get("height")) != (1080, 1920):
+        if (v_stream.get("width"), v_stream.get("height")) != expected_resolution:
             issues.append(f"Unexpected resolution: {v_stream.get('width')}x{v_stream.get('height')}")
     if not a_stream:
         issues.append("Missing audio stream")
@@ -628,6 +639,31 @@ def verify_video(mp4_path: Path, *, check_silence: bool = True) -> dict:
     }
 
 
+def _scene_keyframe_offsets(dur: float, scene_events: list[dict] | None, scene: dict | None) -> list[tuple[str, float]]:
+    """Compute deduplicated keyframe timestamps (start, post-cue, final) within a scene."""
+    end_t = max(0.0, dur - 0.15)
+    start_t = min(0.65, dur * 0.25)
+    raw: list[tuple[str, float]] = [("start", start_t)]
+    if scene_events:
+        for ev in scene_events:
+            t = min(end_t, float(ev["time"]) + 0.15)
+            raw.append((f"cue_{ev['id']}", t))
+    elif scene and isinstance(scene.get("cues"), list):
+        for cue in scene["cues"]:
+            if "at_s" in cue:
+                t = min(end_t, float(cue["at_s"]) + 0.15)
+                raw.append((f"cue_{cue['id']}", t))
+    raw.append(("final", end_t))
+    deduped: list[tuple[str, float]] = []
+    for label, ts in raw:
+        if deduped and abs(ts - deduped[-1][1]) < 0.25:
+            if label == "final":
+                deduped[-1] = (label, ts)
+            continue
+        deduped.append((label, ts))
+    return deduped
+
+
 def extract_preview_frames(
     mp4_path: Path,
     manifest_path: Path,
@@ -635,58 +671,78 @@ def extract_preview_frames(
     *,
     gap_s: float = 0.4,
     scenes: list[dict] | None = None,
+    events: dict[str, list[dict]] | None = None,
 ) -> list[Path]:
-    """Extract 1 midpoint PNG frame per scene for visual QA."""
+    """Extract multi-point keyframe PNGs (start, post-cue, final) per scene for visual QA."""
     if scenes is not None and _is_music_only(scenes):
         manifest = [{"id": s["id"], "duration": float(s["duration_s"])} for s in scenes]
     elif manifest_path.is_file():
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     else:
         raise FileNotFoundError(f"Missing audio manifest: {manifest_path}")
+    scene_map = {s["id"]: s for s in (scenes or [])}
     out_dir.mkdir(parents=True, exist_ok=True)
     frames: list[Path] = []
     cursor = 0.0
     for item in manifest:
+        scene_id = item["id"]
         dur = float(item["duration"])
-        ts = cursor + dur * 0.55
-        out_png = out_dir / f"{item['id']}.png"
-        subprocess.run(
-            [
-                "ffmpeg",
-                "-y",
-                "-ss",
-                f"{ts:.2f}",
-                "-i",
-                str(mp4_path),
-                "-vframes",
-                "1",
-                str(out_png),
-            ],
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        frames.append(out_png)
+        points = _scene_keyframe_offsets(dur, (events or {}).get(scene_id), scene_map.get(scene_id))
+        for idx, (label, rel_ts) in enumerate(points, start=1):
+            ts = cursor + rel_ts
+            out_png = out_dir / f"{scene_id}_{idx:02d}_{label}.png"
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-ss",
+                    f"{ts:.2f}",
+                    "-i",
+                    str(mp4_path),
+                    "-vframes",
+                    "1",
+                    str(out_png),
+                ],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            frames.append(out_png)
         cursor += dur + gap_s
     return frames
 
 
-def build_video(topic_key: str, *, skip_render: bool = False, root: Path | None = None, language: str = "ru") -> dict:
+def build_video(
+    topic_key: str,
+    *,
+    skip_render: bool = False,
+    root: Path | None = None,
+    language: str = "ru",
+    draft: bool = False,
+) -> dict:
     base = root or project_root()
     topic = get_topic(topic_key, language, base)
     require_topic_review(topic, base)
     with audio_lock(base / topic.video_dir / "audio"):
-        return _build_video(topic_key, skip_render=skip_render, root=base, language=language)
+        return _build_video(topic_key, skip_render=skip_render, root=base, language=language, draft=draft)
 
 
-def _build_video(topic_key: str, *, skip_render: bool = False, root: Path | None = None, language: str = "ru") -> dict:
-    """Run full video build: render silent Manim -> concat WAV or music bed -> mux -> verify."""
+def _build_video(
+    topic_key: str,
+    *,
+    skip_render: bool = False,
+    root: Path | None = None,
+    language: str = "ru",
+    draft: bool = False,
+) -> dict:
+    """Run full (or fast 540x960 draft) video build: render silent Manim -> audio -> mux -> verify."""
     base = root or project_root()
     topic = get_topic(topic_key, language, base)
     scenes = topic_scenes(topic, base)
     music_only = _is_music_only(scenes)
     manifest_path = base / topic.video_dir / "audio" / "manifest.json"
-    out_mp4 = base / topic.video_dir / topic.output_name
+    out_name = f"{Path(topic.output_name).stem}_draft.mp4" if draft else topic.output_name
+    out_mp4 = base / topic.video_dir / out_name
     out_mp4.parent.mkdir(parents=True, exist_ok=True)
     if music_only:
         track_id = str(scenes[0]["music_track"])
@@ -703,7 +759,7 @@ def _build_video(topic_key: str, *, skip_render: bool = False, root: Path | None
         events = event_timeline(scenes, manifest, snapshot, topic.language) if snapshot is not None else {}
     fingerprint = render_fingerprint(topic, base, manifest, snapshot=snapshot, events=events)
 
-    if skip_render:
+    if skip_render and not draft:
         media_dir = base / topic.video_dir / "media"
         matches = sorted(
             media_dir.rglob(f"{topic.key}_silent.mp4"),
@@ -721,11 +777,12 @@ def _build_video(topic_key: str, *, skip_render: bool = False, root: Path | None
         ):
             raise ValueError("Stale or untracked silent render; rebuild without --skip-render")
     else:
-        silent_mp4 = render_silent_video(topic, root=base, snapshot=snapshot, events=events)
-        atomic_json(
-            silent_mp4.with_suffix(".render.json"),
-            {"fingerprint": fingerprint, "video_sha256": hashlib.sha256(silent_mp4.read_bytes()).hexdigest()},
-        )
+        silent_mp4 = render_silent_video(topic, root=base, snapshot=snapshot, events=events, draft=draft)
+        if not draft:
+            atomic_json(
+                silent_mp4.with_suffix(".render.json"),
+                {"fingerprint": fingerprint, "video_sha256": hashlib.sha256(silent_mp4.read_bytes()).hexdigest()},
+            )
 
     event_records = []
     if topic.lesson_file and any(events.values()):
@@ -744,31 +801,39 @@ def _build_video(topic_key: str, *, skip_render: bool = False, root: Path | None
             print(f"Concatenated audio: {audio_dur:.2f}s")
         candidate = Path(tmpdir) / out_mp4.name
         mux_audio_video(silent_mp4, full_wav, candidate)
-        report = verify_video(candidate)
+        expected_res = (540, 960) if draft else (1080, 1920)
+        report = verify_video(candidate, expected_resolution=expected_res)
         if report["ok"]:
-            if music_only:
-                provenance = {
-                    "fingerprint": fingerprint,
-                    "audio_mode": "music_only",
-                    "music_track": track_id,
-                    "music_sha256": track_meta["sha256"],
-                    "video_sha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
-                    **({"events": event_records} if topic.lesson_file else {}),
-                }
+            if draft:
+                candidate.replace(out_mp4)
+                report["draft"] = True
+                preview_dir = base / topic.video_dir / "preview_frames_draft"
+                frames = extract_preview_frames(out_mp4, manifest_path, preview_dir, scenes=scenes, events=events)
+                report["preview_frames"] = [str(f) for f in frames]
             else:
-                provenance = {
-                    "fingerprint": fingerprint,
-                    "audio_sha256": [
-                        hashlib.sha256((manifest_path.parent / str(s["wav"])).read_bytes()).hexdigest()
-                        for s in manifest
-                    ],
-                    "video_sha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
-                    **({"events": event_records} if topic.lesson_file else {}),
-                }
-            staged_provenance = Path(tmpdir) / "build.json"
-            staged_provenance.write_text(json.dumps(provenance, indent=2))
-            candidate.replace(out_mp4)
-            staged_provenance.replace(out_mp4.with_suffix(".build.json"))
+                if music_only:
+                    provenance = {
+                        "fingerprint": fingerprint,
+                        "audio_mode": "music_only",
+                        "music_track": track_id,
+                        "music_sha256": track_meta["sha256"],
+                        "video_sha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
+                        **({"events": event_records} if topic.lesson_file else {}),
+                    }
+                else:
+                    provenance = {
+                        "fingerprint": fingerprint,
+                        "audio_sha256": [
+                            hashlib.sha256((manifest_path.parent / str(s["wav"])).read_bytes()).hexdigest()
+                            for s in manifest
+                        ],
+                        "video_sha256": hashlib.sha256(candidate.read_bytes()).hexdigest(),
+                        **({"events": event_records} if topic.lesson_file else {}),
+                    }
+                staged_provenance = Path(tmpdir) / "build.json"
+                staged_provenance.write_text(json.dumps(provenance, indent=2))
+                candidate.replace(out_mp4)
+                staged_provenance.replace(out_mp4.with_suffix(".build.json"))
         report["path"] = str(out_mp4)
 
     print(f"Built {out_mp4} -> {json.dumps(report, ensure_ascii=False)}")

@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 import os
 import re
+from collections.abc import Iterable, Mapping
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 from manim import (
@@ -34,6 +36,92 @@ ACCENT_CYAN = "#00D4FF"
 ACCENT_GOLD = "#FFD166"
 ACCENT_MINT = "#2EC4B6"
 CARD_BG = "#1B263B"
+
+
+SAFE_MAX_ABS_X = 4.35
+SAFE_MIN_Y = -6.15
+SAFE_MAX_Y = 7.45
+
+DEFAULT_BACKGROUND_TARGETS = frozenset({"baseline", "court"})
+DEFAULT_ALLOWED_OVERLAP_PAIRS = frozenset({frozenset({"markers", "arrows"})})
+
+
+def check_mobjects_frame_bounds(
+    mobjects: Mapping[str, Any] | Iterable[Any],
+    *,
+    max_abs_x: float = SAFE_MAX_ABS_X,
+    min_y: float = SAFE_MIN_Y,
+    max_y: float = SAFE_MAX_Y,
+) -> None:
+    """Verify that all mobjects fit within the 9:16 vertical safe area."""
+    items = list(mobjects.items()) if isinstance(mobjects, Mapping) else [(repr(m), m) for m in mobjects]
+    for label, mob in items:
+        if getattr(mob, "width", 0) <= 0 or getattr(mob, "height", 0) <= 0:
+            continue
+        left_x = float(mob.get_left()[0])
+        right_x = float(mob.get_right()[0])
+        bottom_y = float(mob.get_bottom()[1])
+        top_y = float(mob.get_top()[1])
+        if left_x < -max_abs_x or right_x > max_abs_x:
+            raise ValueError(
+                f"Mobject {label} exceeds horizontal 9:16 safe bounds [{left_x:.2f}, {right_x:.2f}] vs ±{max_abs_x:.2f}"
+            )
+        if bottom_y < min_y or top_y > max_y:
+            raise ValueError(
+                f"Mobject {label} exceeds vertical 9:16 safe bounds "
+                f"[{bottom_y:.2f}, {top_y:.2f}] vs [{min_y:.2f}, {max_y:.2f}]"
+            )
+
+
+def find_mobject_overlaps(
+    objects: Mapping[str, Any],
+    *,
+    background_keys: frozenset[str] = DEFAULT_BACKGROUND_TARGETS,
+    allowed_pairs: frozenset[frozenset[str]] = DEFAULT_ALLOWED_OVERLAP_PAIRS,
+    min_overlap: float = 0.05,
+) -> list[tuple[str, str, float, float]]:
+    """Return pairwise AABB overlaps `(name_a, name_b, overlap_w, overlap_h)` among foreground mobjects."""
+    boxes: list[tuple[str, float, float, float, float]] = []
+    for name, mob in objects.items():
+        if name in background_keys:
+            continue
+        if getattr(mob, "width", 0) <= 0 or getattr(mob, "height", 0) <= 0:
+            continue
+        boxes.append(
+            (
+                name,
+                float(mob.get_left()[0]),
+                float(mob.get_right()[0]),
+                float(mob.get_bottom()[1]),
+                float(mob.get_top()[1]),
+            )
+        )
+    overlaps: list[tuple[str, str, float, float]] = []
+    for i, (na, ax0, ax1, ay0, ay1) in enumerate(boxes):
+        for nb, bx0, bx1, by0, by1 in boxes[i + 1 :]:
+            if frozenset((na, nb)) in allowed_pairs:
+                continue
+            ow = min(ax1, bx1) - max(ax0, bx0)
+            oh = min(ay1, by1) - max(ay0, by0)
+            if ow > min_overlap and oh > min_overlap:
+                overlaps.append((na, nb, round(ow, 3), round(oh, 3)))
+    return overlaps
+
+
+def require_no_mobject_overlaps(
+    objects: Mapping[str, Any],
+    *,
+    background_keys: frozenset[str] = DEFAULT_BACKGROUND_TARGETS,
+    allowed_pairs: frozenset[frozenset[str]] = DEFAULT_ALLOWED_OVERLAP_PAIRS,
+    min_overlap: float = 0.05,
+) -> None:
+    """Raise ValueError if any independent foreground mobjects collide."""
+    overlaps = find_mobject_overlaps(
+        objects, background_keys=background_keys, allowed_pairs=allowed_pairs, min_overlap=min_overlap
+    )
+    if overlaps:
+        details = "; ".join(f"{a} <-> {b} ({ow:.2f}x{oh:.2f})" for a, b, ow, oh in overlaps)
+        raise ValueError(f"Overlapping foreground mobjects detected: {details}")
 
 
 def configure_vertical_9_16() -> None:
@@ -264,23 +352,7 @@ class VerticalShortScene(Scene):
         max_y: float = SAFE_MAX_Y,
     ) -> None:
         """Verify that all on-screen mobjects fit within the 9:16 vertical safe area."""
-        for mob in getattr(self, "mobjects", []):
-            if getattr(mob, "width", 0) <= 0 or getattr(mob, "height", 0) <= 0:
-                continue
-            left_x = float(mob.get_left()[0])
-            right_x = float(mob.get_right()[0])
-            bottom_y = float(mob.get_bottom()[1])
-            top_y = float(mob.get_top()[1])
-            if left_x < -max_abs_x or right_x > max_abs_x:
-                raise ValueError(
-                    f"Mobject {mob!r} exceeds horizontal 9:16 safe bounds "
-                    f"[{left_x:.2f}, {right_x:.2f}] vs ±{max_abs_x:.2f}"
-                )
-            if bottom_y < min_y or top_y > max_y:
-                raise ValueError(
-                    f"Mobject {mob!r} exceeds vertical 9:16 safe bounds "
-                    f"[{bottom_y:.2f}, {top_y:.2f}] vs [{min_y:.2f}, {max_y:.2f}]"
-                )
+        check_mobjects_frame_bounds(getattr(self, "mobjects", []), max_abs_x=max_abs_x, min_y=min_y, max_y=max_y)
 
     def run_segment(self, segment, duration: float) -> None:
         self._segment_start = self.renderer.time

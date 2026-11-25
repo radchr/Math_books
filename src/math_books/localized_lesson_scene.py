@@ -11,7 +11,7 @@ from math_books.cue_timeline import event_timeline, timed_event_timeline, valida
 from math_books.languages import validate_language
 from math_books.lessons import load_lesson
 from math_books.themes import get_theme
-from math_books.video_ui import VerticalShortScene, configure_vertical_9_16
+from math_books.video_ui import VerticalShortScene, configure_vertical_9_16, require_no_mobject_overlaps
 from math_books.visual_blocks import get_visual_block
 
 configure_vertical_9_16()
@@ -85,6 +85,7 @@ class LocalizedLessonScene(VerticalShortScene):
         self.camera.background_color = theme.bg  # ty: ignore[invalid-assignment]
         template = row.get("visual", {}).get("template", "text_card")
         objects = get_visual_block(template).build(theme, self._lesson_language, row)
+        require_no_mobject_overlaps(objects)
         # Bound the animation cost for short test clips; narration remains authoritative.
         events = self._event_timeline[row["id"]]
         for event in events:

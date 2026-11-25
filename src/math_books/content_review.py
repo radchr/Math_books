@@ -19,6 +19,7 @@ from urllib.parse import urlparse
 from math_books.languages import SUPPORTED_LANGUAGES, validate_language
 from math_books.lesson_math import coin_followup_examples
 from math_books.lessons import lesson_digest, lesson_path, load_lesson
+from math_books.sympy_checks import check_sympy_formula_eval, check_sympy_identity, check_sympy_solve
 
 REVIEW_CRITERIA = {
     "scientific": ("evidence_matches_claims", "calculations_correct", "assumptions_and_limits", "no_overclaim"),
@@ -254,6 +255,9 @@ CHECK_REGISTRY: dict[str, Callable[[dict], dict]] = {
     "independent_attempts": _check_independent_attempts,
     "expected_points": _check_expected_points,
     "fair_coin_followups": _check_fair_coin_followups,
+    "sympy_identity": check_sympy_identity,
+    "sympy_solve": check_sympy_solve,
+    "sympy_formula_eval": check_sympy_formula_eval,
 }
 
 

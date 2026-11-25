@@ -113,7 +113,12 @@ def cmd_verify_audio(args: argparse.Namespace) -> int:
 
 
 def cmd_build(args: argparse.Namespace) -> int:
-    report = build_video(args.topic, skip_render=args.skip_render, language=getattr(args, "lang", "ru"))
+    report = build_video(
+        args.topic,
+        skip_render=args.skip_render,
+        language=getattr(args, "lang", "ru"),
+        draft=getattr(args, "draft", False),
+    )
     return 0 if report["ok"] else 1
 
 
@@ -276,6 +281,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_build = sub.add_parser("build", help="Render silent Manim video, concat audio, mux, and verify")
     p_build.add_argument("topic")
     p_build.add_argument("--skip-render", action="store_true", help="Reuse existing silent MP4 and only re-mux audio")
+    p_build.add_argument(
+        "--draft",
+        action="store_true",
+        help="Fast 540x960 draft render to <topic>_draft.mp4 with multi-point preview frames",
+    )
     p_build.set_defaults(func=cmd_build)
 
     p_verify = sub.add_parser("verify", help="Verify video resolution, audio/video sync, and silence gaps")

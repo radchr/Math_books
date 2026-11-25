@@ -116,6 +116,11 @@ class AuditFixesTests(unittest.TestCase):
             dossier_path = tmp_root / "content_reviews/uk/perelman_echo_distance.json"
             dossier = json.loads(dossier_path.read_text(encoding="utf-8"))
             dossier["scene_sha256"] = hashlib.sha256((tmp_root / topic.scene_file).read_bytes()).hexdigest()
+            dossier["supporting_files"] = {
+                name: hashlib.sha256((tmp_root / name).read_bytes()).hexdigest()
+                for name in content_review.SUPPORTING_FILES
+                if (tmp_root / name).is_file()
+            }
             digest = content_review.dossier_digest(dossier)
             for rev in dossier["reviews"].values():
                 rev["dossier_sha256"] = digest

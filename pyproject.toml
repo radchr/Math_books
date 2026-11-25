@@ -20,6 +20,7 @@ dependencies = [
     "pymorphy3>=2.0.3",
     "python-dotenv>=1.2.4",
     "snowballstemmer>=3.0.1",
+    "sympy>=1.14.0",
 ]
 
 [project.scripts]
