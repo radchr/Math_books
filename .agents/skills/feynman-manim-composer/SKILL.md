@@ -2,16 +2,17 @@
 name: feynman-manim-composer
 description: >-
   Composes pedagogically rigorous 9:16 vertical video screenplays and dual-column storyboards
-  (Voiceover and Manim Action) for Math_books STEM-basketball shorts, combining Richard Feynman's
-  intuition-first method, Bruner's Concreteness Fading (CRA), and Mayer's Cognitive Load principles.
-  Use when asked to "напиши сценарій для Manim", "створи розкадровку", "сплануй анімацію",
-  "storyboard", or design a new Math_books video before coding the scene.
+  (Voiceover/Captions and Manim Action) for Math_books STEM and STEM-basketball shorts (both
+  voiceover and music_only modes), combining Richard Feynman's intuition-first method, Bruner's
+  Concreteness Fading (CRA), and Mayer's Cognitive Load principles. Use when asked to
+  "напиши сценарій для Manim", "створи розкадровку", "сплануй анімацію", "storyboard",
+  or design a new Math_books video before saving it to content/bank/ or coding the scene.
 ---
 
 # Feynman-Manim-Composer (Math_books 9:16 Edition)
 
-Педагогічний і режисерський місток між **ідеєю з книги / баскетболу** та **кодом Manim** у `Math_books`.
-Перетворює будь-яку тему з математики, фізики чи статистики на чітку двоколонкову розкадровку (55–70 секунд, `9:16`, 5 сцен) для 12-річного підлітка **до** написання коду та запуску TTS.
+Педагогічний і режисерський місток між **ідеєю з книги / науки / баскетболу** та **модульними сценами Manim** у `Math_books`.
+Перетворює будь-яку тему з математики, фізики, хімії, біології чи спортивної статистики на чітку двоколонкову розкадровку (`9:16`, режим `voiceover` 55–70 с або `music_only` 20–45 с) для цільової аудиторії (типово 12+ років або вказаний `audience_age`) **до** збереження в банк сценаріїв і запуску рендеру.
 
 ---
 
@@ -67,12 +68,13 @@ description: >-
   - Полотно: `1080×1920`, безпечна зона `|x| <= 4.35`, `y ∈ [-6.15, +7.45]`, ширина тексту `≤ 7.6`.
   - Числа озвучки й екрана мають спиратися на спільну перевірювану модель; для раціональної арифметики використовуй `fractions.Fraction`, для фізики — перевірені одиниці й точність чисельного методу.
   - Ніякого `self.add_sound()`; аудіо зводиться окремо через `math-books build <topic>`.
-- **Перехід до реалізації:** після затвердження розкадровки користувачем переходь до скілу `stem-basketball-video` (код → `content_reviews/<topic>.json` → TTS → `build` → `verify --frames`).
+- **Модульні візуальні блоки та теми (`src/math_books/visual_blocks/`):**
+  - Перед тим як проєктувати кастомний Manim-код, розклади кожну сцену на наявні перевикористовувані блоки: `text_card`, `hook_choice`, `compare_bars`, `step_chain`, `challenge_card`, `image_stage` (SVG/PNG-схеми з `assets/diagrams/`), або доменні паки `packs/basketball/{half_court_diagram,scoreboard_duel}`.
+  - Обери тему оформлення (`neutral_dark`, `science_lab`, `basketball_dark`).
+- **Режим `music_only` (фонова музика + написи без озвучки):**
+  - Коротший темп: 20–45 с (3–5 сцен), явні `duration_s` і часові `cues`, ультрастислі титри (до 6–10 слів на картку) та опора на наочну схему (`image_stage` / `visual_blocks`).
+  - Підбирай або додавай трек із бази `assets/music/` (`math-books music list | generate | import`).
+  - Педагогічний скелет (Predict → Observe → Explain → Mission) і явні `assumptions`/`limitations` для `content_review.py` лишаються обов'язковими.
+- **Перехід до реалізації:** після затвердження розкадровки користувачем збережи запис у банк сценаріїв (`content/bank/<id>.json` → `uv run math-books bank promote <id>`) і переходь до скілу `stem-basketball-video` (аудит `anti-slop-review` → `content_reviews/<lang>/<topic>.json` → TTS або `music_only` → `build` → `verify --frames`).
 
-Для майбутніх тримовних уроків розкадровка має містити `uk`, `ru`, `en` narration
-та екранні рядки за стабільними scene ID. Формули лишаються спільними. Формат,
-мовні шляхи й `--lang` описані в `docs/three-language-videos.md`; старі Python-сцени
-не перекладаються автоматично. Нові декларативні уроки використовують явні
-`cues` (`cue_timeline.py`), а legacy `VerticalShortScene.word_timestamp` споживає
-лише перевірений `timing_snapshot` із точним Unicode-зіставленням, а не довільний
-JSON за часом зміни.
+Для нових тримовних уроків розкадровка має містити `uk`, `ru`, `en` narration (або наекранні титри для `music_only`) та підписи за стабільними scene ID. Формули лишаються спільними. Формат, мовні шляхи й `--lang` описані в `docs/three-language-videos.md`; старі Python-сцени не перекладаються автоматично. Нові декларативні уроки використовують явні `cues` (`cue_timeline.py`), а legacy `VerticalShortScene.word_timestamp` споживає лише перевірений `timing_snapshot` із точним Unicode-зіставленням, а не довільний JSON за часом зміни.

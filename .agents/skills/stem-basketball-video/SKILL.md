@@ -1,31 +1,44 @@
 ---
 name: stem-basketball-video
 description: >-
-  End-to-end pipeline for creating engaging 9:16 vertical STEM-basketball educational videos
-  in Russian or Ukrainian for a 12-year-old basketball fan. Use this skill whenever the user asks
-  to create a new math/physics/geometry/statistics basketball video, adapt a book problem into a
-  video, or build a Manim + Gemini/Ukrainian TTS short.
+  End-to-end pipeline for creating engaging 9:16 vertical STEM and STEM-basketball educational
+  videos in Ukrainian, Russian, or English (with Gemini/Ukrainian TTS voiceover or music_only
+  captions mode). Use this skill whenever the user asks to create a new math, physics, chemistry,
+  biology, geometry, statistics, or basketball video, adapt a book problem into a video, or build
+  a Manim short from the scenario bank.
 ---
 
-# STEM-Basketball Video Production Skill
+# STEM & STEM-Basketball Video Production Skill
 
-## Future three-language lessons
+## Declarative Modular Lessons (Preferred for All New Videos)
 
-For new videos requiring Ukrainian, Russian and English, follow
-[the multilingual guide](../../../docs/three-language-videos.md): create
-`content/lessons/<topic>.json` with complete `uk/ru/en` narration and captions,
-then use `review`, `tts`, `build`, `verify-audio`, `verify` with `--lang`.
-The shared `LocalizedLessonScene` renders translated cards before layout.
-Artifacts and approvals are language-specific. Missing translations fail closed.
-The legacy custom Python-scene recipe below remains available for Russian topics;
-it does not automatically translate custom Manim labels. Do not regenerate old
-videos to add languages unless the user explicitly requests it.
+For all new videos (general STEM — math, physics, chemistry, biology — or STEM-basketball, in `uk`, `ru`, or `en`), use the **scenario bank + declarative lesson + modular `visual_blocks`** workflow ([multilingual guide](../../../docs/three-language-videos.md)):
 
-ASR defaults to `small` for Ukrainian and `base` for Russian/English, with explicit
-validated model overrides. Do not weaken numeric/negation checks to mask ASR errors.
-Before approval, apply `anti-slop-review` to the actual localized narration and captions.
+1. **Scenario Bank (`content/bank/<id>.json`):**
+   - Store the idea, domain, tags, sources, pedagogy, and `lesson_draft` in `content/bank/<id>.json`.
+   - Promote it to a declarative lesson: `uv run math-books bank promote <id>` → writes `content/lessons/<topic>.json` (with complete `uk/ru/en` translations).
+   - Browse/search existing ideas with `uv run math-books bank list` / `search`.
+2. **Modular Visual Blocks & Themes (`src/math_books/visual_blocks/`):**
+   - Compose scenes from reusable blocks: `text_card`, `hook_choice`, `compare_bars`, `step_chain`, `challenge_card`, `image_stage` (for SVG/PNG diagrams in `assets/diagrams/`), and domain packs like `packs/basketball/{half_court_diagram,scoreboard_duel}`.
+   - Pick a named theme: `neutral_dark`, `science_lab`, or `basketball_dark`.
+3. **Choose `audio_mode`:**
+   - **`"voiceover"` (default, 55–70s):** Full narration in `uk`/`ru`/`en`, Gemini TTS primary (auto-fallback to `uk` chain for `--lang uk` if Gemini is unavailable), automatic local `faster-whisper` ASR QA (`small` for `uk`, `base` for `ru`/`en`), and word-level `cues`.
+   - **`"music_only"` (20–45s):** No TTS/ASR. Uses a reusable track from `assets/music/` (`music_track`), explicit per-scene `duration_s`, timed `cues`, and concise on-screen captions/diagrams. Manage tracks via `uv run math-books music list | generate --backend procedural|lyria|musicgen|ace_step | import`.
+4. **Mandatory Editorial Review Gate (Both `voiceover` and `music_only`!):**
+   - Initialize & approve `content_reviews/<lang>/<topic>.json` via `uv run math-books review <topic> --lang <lang> --init` and `anti-slop-review` on the actual localized text (for `music_only`, `script_quote` matches synthesized on-screen captions).
+   - Require `ok: true` before TTS or build. Never copy approvals across languages.
+5. **Synthesize (voiceover only), Build & Verify:**
+   - Voiceover only: `uv run math-books tts <topic> --lang <lang> --trim-edges` and `uv run math-books verify-audio <topic> --lang <lang>`.
+   - Build & verify (both modes): `uv run math-books build <topic> --lang <lang>` and `uv run math-books verify <topic> --lang <lang> --frames`.
+   - Inspect all extracted PNGs in `videos/video_<topic>/<lang>/preview_frames/` with `read_file`.
 
-Create 55–70 second vertical (`1080×1920`, `30 fps`) popular-science videos connecting **basketball** (NBA, streetball, court tactics, shooting physics, analytics) with **mathematics** (geometry, algebra, probability, game theory, statistics) for a 12-year-old boy.
+The legacy custom Python-scene recipe below remains available only when a video needs bespoke Manim animations not covered by `visual_blocks`; do not regenerate the seven legacy Russian topics unless explicitly requested.
+
+---
+
+## Legacy Custom Python-Scene Recipe (Russian / Bespoke Manim)
+
+Create 55–70 second vertical (`1080×1920`, `30 fps`) popular-science videos connecting **basketball** (NBA, streetball, court tactics, shooting physics, analytics) with **mathematics** (geometry, algebra, probability, game theory, statistics) for a 12-year-old viewer.
 
 ---
 
